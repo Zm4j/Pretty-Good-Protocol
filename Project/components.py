@@ -133,7 +133,7 @@ class Table:
 
 
 class Label:
-    def __init__(self, text, x, y, font_size=32, font_color=GREEN):
+    def __init__(self, text, x, y, font_size=32, font_color=BLACK):
         self.text = text
         self.x = x
         self.y = y
