@@ -66,6 +66,9 @@ class Button:
             if self.rect.collidepoint(event.pos):
                 self.callback()
 
+    def getName(self):
+        return self.text
+
     def draw(self, screen):
         font = pygame.font.Font(None, 25)
         pygame.draw.rect(screen, GRAY, self.rect)
