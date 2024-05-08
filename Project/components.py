@@ -130,3 +130,16 @@ class Table:
                 text_surface = font.render(str(cell_data), True, BLACK)
                 text_rect = text_surface.get_rect(center=cell_rect.center)
                 screen.blit(text_surface, text_rect)
+
+
+class Label:
+    def __init__(self, text, x, y, font_size=32, font_color=GREEN):
+        self.text = text
+        self.x = x
+        self.y = y
+        self.font = pygame.font.Font(None, font_size)
+        self.font_color = font_color
+
+    def draw(self, screen):
+        text_surface = self.font.render(self.text, True, self.font_color)
+        screen.blit(text_surface, (self.x, self.y))
