@@ -1,3 +1,4 @@
+import random
 import sys
 from components import *
 from algorithms import *
@@ -49,36 +50,32 @@ def draw_components(color, buttons, textboxes, checkboxes, tables, labels):
 def main():
     clock = pygame.time.Clock()
 
-    key = TextBox(50, 50, 250, 50)
-    password_0 = TextBox(50, 150, 250, 50)
-
-    name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
-    email = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
-    bits = TextBox((WIDTH - BUTTON_WIDTH) // 2, 250, 350, 50)
-    password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
-
-    generate_key = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT,
-                          "Generate Key", lambda: set_screen_mod(MOD.GENERATE))
-    encrypt_message = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt Message",
-                             lambda: set_screen_mod(MOD.ENCRYPT))
-    decrypt_message = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH,
-                             BUTTON_HEIGHT, "Decrypt Message", lambda: set_screen_mod(MOD.DECRYPT))
-    test_button = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 12 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT,
-                         "TEST", lambda: set_screen_mod(MOD.TEST))
-    main_page = Button(0, 0, BUTTON_WIDTH / 2, BUTTON_HEIGHT / 2, "return", lambda: set_screen_mod(MOD.DEFAULT))
-
-    column_names = ["Name", "Age", "Gender"]
     data = [
-        ["Alice", 25, "Female"],
-        ["Bob", 30, "Male"],
-        ["Charlie", 40, "Male"],
-        ["Diana", 35, "Female"],
-        ["Eve", 20, "Female"]
+        ["12:34:56", hex(random.randint(0, 2 ** 64)), str(hex(random.randint(0, 2**90)))+"...", str(hex(random.randint(0, 2**90)))+"...",
+         "jj200083d@student.etf.bg.ac.rs"],
+        ["06:09:06", hex(random.randint(0, 2 ** 64)), str(hex(random.randint(0, 2**90)))+"...", str(hex(random.randint(0, 2**90)))+"...",
+         "jj200083d@student.etf.bg.ac.rs"],
+        ["00:00:00", hex(random.randint(0, 2 ** 64)), str(hex(random.randint(0, 2**90)))+"...", str(hex(random.randint(0, 2**90)))+"...",
+         "jj200083d@student.etf.bg.ac.rs"],
+        ["05:19:23", hex(random.randint(0, 2 ** 64)), str(hex(random.randint(0, 2**90)))+"...", str(hex(random.randint(0, 2**90)))+"...",
+         "jj200083d@student.etf.bg.ac.rs"],
+        ["17:17:18", hex(random.randint(0, 2 ** 64)), str(hex(random.randint(0, 2**90)))+"...", str(hex(random.randint(0, 2**90)))+"...",
+         "jj200083d@student.etf.bg.ac.rs"],
     ]
 
-    tables = []
-    table = Table(50, 450, column_names, data)
-    tables.append(table)
+    generate_key = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Generate Key", lambda: set_screen_mod(MOD.GENERATE))
+    key_table_view_button = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "View Key Tables", lambda: set_screen_mod(MOD.KEY_TABLE_VIEW))
+    encrypt_message = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt Message", lambda: set_screen_mod(MOD.ENCRYPT))
+    decrypt_message = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 12 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Decrypt Message", lambda: set_screen_mod(MOD.DECRYPT))
+    test_button = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 18 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "TEST", lambda: set_screen_mod(MOD.TEST))
+
+    return_button = Button(0, 0, BUTTON_WIDTH // 2, BUTTON_HEIGHT // 2, "return", lambda: set_screen_mod(MOD.DEFAULT))
+
+    # components for generate mod
+    G1_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
+    G1_email = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
+    G1_bits = TextBox((WIDTH - BUTTON_WIDTH) // 2, 250, 350, 50)
+    G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
 
     checkboxes = []
     checkbox_y = 50
@@ -86,48 +83,56 @@ def main():
         checkboxes.append(CheckBox(350, checkbox_y, 20, f"Checkbox {i + 1}"))
         checkbox_y += 70
 
-    textboxes = [key, password_0]
-    buttons = [generate_key, encrypt_message, decrypt_message, test_button, main_page]
-
     while True:
         clearscreen()
 
-        if SCREEN_MOD == MOD.TEST:
-            buttons_test = [main_page]
-            draw_components(WHITE, buttons_test, textboxes, checkboxes, tables, [])
-            handle_events(buttons_test, textboxes, checkboxes)
-
-        elif SCREEN_MOD == MOD.DEFAULT:
+        if SCREEN_MOD == MOD.DEFAULT:
+            buttons = [generate_key, encrypt_message, decrypt_message, test_button, key_table_view_button]
             draw_components(WHITE, buttons, [], [], [], [])
             handle_events(buttons, [], [])
 
         elif SCREEN_MOD == MOD.GENERATE:
             # TODO MOD treba da se menja !!!
-            add_button = Button((WIDTH - BUTTON_WIDTH) // 2, 430, BUTTON_WIDTH, BUTTON_HEIGHT, "add",
-                                lambda: set_screen_mod(MOD.DEFAULT))
-            buttons_generate = [main_page, add_button]
+            add_button = Button((WIDTH - BUTTON_WIDTH) // 2, 430, BUTTON_WIDTH, BUTTON_HEIGHT, "add", lambda: set_screen_mod(MOD.DEFAULT))
+            buttons_generate = [return_button, add_button]
             name_label = Label("Name: ", 100, 60)
             email_label = Label("e-mail: ", 100, 160)
             bits_label = Label("Bits: ", 100, 260)
             password_label = Label("Password: ", 100, 360)
 
             labels = [name_label, email_label, bits_label, password_label]
-            textboxes_generate = [name, email, bits, password]
+            textboxes_generate = [G1_name, G1_email, G1_bits, G1_password]
             draw_components(YELLOW, buttons_generate, textboxes_generate, [], [], labels)
             handle_events(buttons_generate, textboxes_generate, [])
 
         elif SCREEN_MOD == MOD.ENCRYPT:
-            buttons_encrypt = [main_page]
+            buttons_encrypt = [return_button]
             draw_components(LIGHT_BLUE, buttons_encrypt, [], [], [], [])
             handle_events(buttons_encrypt, [], [])
 
         elif SCREEN_MOD == MOD.DECRYPT:
-            buttons_decrypt = [main_page]
+            buttons_decrypt = [return_button]
             draw_components(PURPLE, buttons_decrypt, [], [], [], [])
             handle_events(buttons_decrypt, [], [])
 
+        elif SCREEN_MOD == MOD.TEST:
+            buttons_test = [return_button]
+            draw_components(WHITE, buttons_test, [], checkboxes, [], [])
+            handle_events(buttons_test, [], checkboxes)
+
+        elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
+            KTV1_save_table_button = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT, "SAVE TABLE", lambda: set_screen_mod(MOD.KEY_TABLE_VIEW))
+            buttons_ktv = [return_button, KTV1_save_table_button]
+            KTV1_table_name = Label("RSA PAIR KEY TABLE", (WIDTH-300)//2, 40)
+            tables = []
+            private_key_table = Table((WIDTH-1250)//2, 80, ["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "User ID"], data)
+            tables.append(private_key_table)
+
+            draw_components(WHITE, buttons_ktv, [], [], tables, [KTV1_table_name])
+            handle_events(buttons_ktv, [], [])
+
         else:
-            buttons_else = [main_page]
+            buttons_else = [return_button]
             draw_components(GREEN, buttons_else, [], [], [], [])
             handle_events(buttons_else, [], [])
 

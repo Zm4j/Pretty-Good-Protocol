@@ -8,14 +8,16 @@ class MOD(Enum):
     GENERATE = 1
     ENCRYPT = 2
     DECRYPT = 3
+    KEY_TABLE_VIEW = 4
 
 
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1500, 900
 BUTTON_WIDTH, BUTTON_HEIGHT = 200, 50
 TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 500, 50
 
 WHITE = (255, 255, 255)
-GRAY = (200, 200, 200)
+GRAY = (180, 180, 180)
+LIGHT_GRAY = (220, 220, 220)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
@@ -98,14 +100,14 @@ class CheckBox:
 
 
 class Table:
-    def __init__(self, x, y, column_names, data):
+    def __init__(self, x, y, column_names, data, column_width=[110, 210, 310, 310, 310]):
         self.x = x
         self.y = y
         self.column_names = column_names
         self.data = data
         self.num_columns = len(column_names)
         self.num_rows = len(data)
-        self.column_width = 150
+        self.column_width = column_width
         self.row_height = 20
         self.header_height = 25
         self.cell_padding = 5
@@ -113,23 +115,27 @@ class Table:
     def draw(self, screen):
         font = pygame.font.Font(None, 25)
         # Draw column headers
+        agg_col_width = 0
         for i, column_name in enumerate(self.column_names):
-            header_rect = pygame.Rect(self.x + i * self.column_width, self.y, self.column_width, self.header_height)
+            header_rect = pygame.Rect(self.x + agg_col_width, self.y, self.column_width[i], self.header_height)
             pygame.draw.rect(screen, GRAY, header_rect)
             text_surface = font.render(column_name, True, BLACK)
             text_rect = text_surface.get_rect(center=header_rect.center)
             screen.blit(text_surface, text_rect)
+            agg_col_width += self.column_width[i]
 
         # Draw data cells
         for row_index, row_data in enumerate(self.data):
+            agg_col_width = 0
             for col_index, cell_data in enumerate(row_data):
-                cell_rect = pygame.Rect(self.x + col_index * self.column_width,
+                cell_rect = pygame.Rect(self.x + agg_col_width,
                                         self.y + self.header_height + row_index * self.row_height,
-                                        self.column_width, self.row_height)
-                pygame.draw.rect(screen, WHITE, cell_rect)
+                                        self.column_width[col_index], self.row_height)
+                pygame.draw.rect(screen, LIGHT_GRAY, cell_rect)
                 text_surface = font.render(str(cell_data), True, BLACK)
                 text_rect = text_surface.get_rect(center=cell_rect.center)
                 screen.blit(text_surface, text_rect)
+                agg_col_width += self.column_width[col_index]
 
 
 class Label:
