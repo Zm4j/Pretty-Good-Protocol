@@ -10,7 +10,7 @@ main_screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
 pygame.display.set_caption("PGP")
 
-
+GENERATE_KEY_VALUES = []
 def set_screen_mod(x):
     global SCREEN_MOD
     SCREEN_MOD = x
@@ -77,12 +77,15 @@ def main():
     G1_bits = TextBox((WIDTH - BUTTON_WIDTH) // 2, 250, 350, 50)
     G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
 
+    textboxes_generate = [G1_name, G1_email, G1_bits, G1_password]
+
     checkboxes = []
     checkbox_y = 50
     for i in range(5):
         checkboxes.append(CheckBox(350, checkbox_y, 20, f"Checkbox {i + 1}"))
         checkbox_y += 70
 
+    ind = 0
     while True:
         clearscreen()
 
@@ -90,6 +93,14 @@ def main():
             buttons = [generate_key, encrypt_message, decrypt_message, test_button, key_table_view_button]
             draw_components(WHITE, buttons, [], [], [], [])
             handle_events(buttons, [], [])
+
+            if G1_name.getText() != '' and G1_email.getText() != '' and G1_bits.getText() != '' and G1_password.getText() != '' and ind == 0:
+                GENERATE_KEY_VALUES.append(G1_name.getText())
+                GENERATE_KEY_VALUES.append(G1_email.getText())
+                GENERATE_KEY_VALUES.append(G1_bits.getText())
+                GENERATE_KEY_VALUES.append(G1_password.getText())
+                generate_keys(GENERATE_KEY_VALUES)
+                ind = 1
 
         elif SCREEN_MOD == MOD.GENERATE:
             # TODO MOD treba da se menja !!!
@@ -101,9 +112,9 @@ def main():
             password_label = Label("Password: ", 100, 360)
 
             labels = [name_label, email_label, bits_label, password_label]
-            textboxes_generate = [G1_name, G1_email, G1_bits, G1_password]
             draw_components(YELLOW, buttons_generate, textboxes_generate, [], [], labels)
             handle_events(buttons_generate, textboxes_generate, [])
+
 
         elif SCREEN_MOD == MOD.ENCRYPT:
             buttons_encrypt = [return_button]

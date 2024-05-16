@@ -55,6 +55,8 @@ class TextBox:
         if self.text != "":
             text_surface = font.render(self.text, True, BLACK)
             screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5))
+    def getText(self):
+        return self.text
 
 
 class Button:
@@ -98,6 +100,8 @@ class CheckBox:
         text_surface = font.render(self.text, True, BLACK)
         screen.blit(text_surface, (self.rect.x + 30, self.rect.y))
 
+    def isChecked(self):
+        return self.checked
 
 class Table:
     def __init__(self, x, y, column_names, data, column_width=[110, 210, 310, 310, 310]):
