@@ -121,14 +121,16 @@ def main():
             handle_events(buttons_test, [], checkboxes)
 
         elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
+            KTV1_table_name = Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40)
+            KTV1_table_name2 = Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT//2 + 40)
             KTV1_save_table_button = Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT, "SAVE TABLE", lambda: set_screen_mod(MOD.KEY_TABLE_VIEW))
             buttons_ktv = [return_button, KTV1_save_table_button]
-            KTV1_table_name = Label("RSA PAIR KEY TABLE", (WIDTH-300)//2, 40)
-            tables = []
-            private_key_table = Table((WIDTH-1250)//2, 80, ["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "User ID"], data)
-            tables.append(private_key_table)
 
-            draw_components(WHITE, buttons_ktv, [], [], tables, [KTV1_table_name])
+            private_key_table = Table((WIDTH-1250)//2, 80, ["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "User ID"], data)
+            data1 = [[row[0], row[1], row[2], row[4]] for row in data]
+            public_key_table = Table((WIDTH - 940) // 2, HEIGHT//2 + 80, ["Timestamp", "Key ID", "Public Key", "User ID"], data1)
+
+            draw_components(WHITE, buttons_ktv, [], [], [private_key_table, public_key_table], [KTV1_table_name, KTV1_table_name2])
             handle_events(buttons_ktv, [], [])
 
         else:
