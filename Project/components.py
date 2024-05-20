@@ -55,6 +55,7 @@ class TextBox:
         if self.text != "":
             text_surface = font.render(self.text, True, BLACK)
             screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5))
+
     def getText(self):
         return self.text
 
@@ -103,8 +104,11 @@ class CheckBox:
     def isChecked(self):
         return self.checked
 
+
 class Table:
-    def __init__(self, x, y, column_names, data, column_width=[110, 210, 310, 310, 310]):
+    def __init__(self, x, y, column_names, data, column_width=None):
+        if column_width is None:
+            column_width = [110, 210, 310, 310, 310]
         self.x = x
         self.y = y
         self.column_names = column_names
@@ -115,6 +119,9 @@ class Table:
         self.row_height = 20
         self.header_height = 25
         self.cell_padding = 5
+
+    def handle_event(self, event):
+        pass
 
     def draw(self, screen):
         font = pygame.font.Font(None, 25)
@@ -150,6 +157,46 @@ class Label:
         self.font = pygame.font.Font(None, font_size)
         self.font_color = font_color
 
+    def handle_event(self, event):
+        pass
+
     def draw(self, screen):
         text_surface = self.font.render(self.text, True, self.font_color)
         screen.blit(text_surface, (self.x, self.y))
+
+
+class RadioButton:
+    def __init__(self, x, y, text, radius=10, color=GRAY, selected_color=BLACK, font_size=32, font_color=BLACK):
+        self.x = x
+        self.y = y
+        self.radius = radius
+        self.color = color
+        self.selected_color = selected_color
+        self.text = text
+        self.font = pygame.font.Font(None, font_size)
+        self.font_color = font_color
+        self.selected = False
+
+    def draw(self, screen):
+        # Draw the outer circle
+        pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
+
+        # Draw the inner circle if selected
+        if self.selected:
+            pygame.draw.circle(screen, self.selected_color, (self.x, self.y), self.radius)
+
+        # Draw the text
+        text_surface = self.font.render(self.text, True, self.font_color)
+        screen.blit(text_surface, (self.x + self.radius + 10, self.y - text_surface.get_height() // 2))
+
+    def is_clicked(self, mouse_pos):
+        # Check if the radio button is clicked
+        distance = ((mouse_pos[0] - self.x) ** 2 + (mouse_pos[1] - self.y) ** 2) ** 0.5
+        return distance <= self.radius
+
+    def handle_event(self, event, group):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.is_clicked(event.pos):
+                for button in group:
+                    button.selected = False
+                self.selected = True

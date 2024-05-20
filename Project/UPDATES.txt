@@ -1,0 +1,52 @@
+promene u direktorijumu -> -dodat je folder "Keys" u kome ce biti smesteni .pem fajlovi
+                           -dodata klasa za radioDugmice
+
+promena u main.py -> -handle_event i draw_component sada zahtevaju umesto vise razlicitih listi, jednu listu u kojoj se mogu naci razlicite komponente npr [dugem1, dugme2, labela1, textbox1, ...]
+                        -ZA RADIO DUGMICE TREBA JOS JEDNA LISTA, POSEBNA LISTA KOJA SADRZI SVE RADIO DUGMICE, primer je dat u MOD.TEST prozoru
+                     -kada se napravi promenljiva ona se direktno smesta u listu, pa nema potrebe za pravljenjem promenljivih kao button1, pa components.append(button1) vec moze direktno da se doda
+                     -OVO NE VAZI ZA [TEXTBOX, CHECKBOX, RADIOBUTTON]-OVE ONI MORAJU DA SE DEFINISU PRE WHILE PETLJE!!!!!
+                     -napravljena funkcija koja iz zadatog foldera uzima sve fajlove i upisuje u program kljuceve, dodatno ima filter po EMAIL-U, tako da se ispisuju samo kljucevi za unetog korisnika
+
+______________________________________________________________________________________________
+
+predlog za strukturu .pem fajla:
+
+0.#TIME [insert_date]
+1.#USER [insert_email]
+2.-----BEGIN RSA PRIVATE KEY-----
+3.************* KEY ****************
+4.-----END RSA PRIVATE KEY-----
+5.-----BEGIN PUBLIC KEY-----
+6.************* KEY ****************
+7.-----END PUBLIC KEY-----
+
+______________________________________________________________________________________________
+
+predlog za strukturu enkriptovanog podatka:
+
+-------------------------------
+1 = ID javnog kljuca kojim se enkriptuje kljuc sesije Ks
+2 = E(Pu,Ks)
+-------------------------------
+3 = Timestamp
+4 = ID javnog kljuca koji je uparen sa privatnim kljucem kojim je autentifikovana poruka
+5 = pocetak vrenodsti H(M), da bi primaoc poruke mogao da proveri da li je dobro desiforvao poruku
+6 = E(Pr,H(M))
+-------------------------------
+7 = naziv fajla
+8 = Timestamp
+9 = M
+
+______________________________________________________________________________________________
+
+
+Proces enkripcije:
+
+TO_SEND = ""
+
+TO_SEND = M + [Timestamp] + Filename ->
+TO_SEND += E(Pr_a(H(M))) + deo(H(M)) + ID_Pu_a + [Timestamp] ->
+TO_SEND = ZIP(TO_SEND) ->
+TO_SEND = E(Ks, TO_SEND) ->
+TO_SEND += E(Pu_b, Ks) + ID_Pu_b ->
+TO_SEND = R64(TO_SEND)

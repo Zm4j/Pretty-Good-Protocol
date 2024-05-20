@@ -1,11 +1,12 @@
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
-def generate_keys(listK):
+
+def generate_keys(list_k):
     # Generate private key
     private_key = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=int(listK[2])
+        key_size=int(list_k[2])
     )
     # Generate public key from the private key
     public_key = private_key.public_key()
@@ -23,11 +24,6 @@ def generate_keys(listK):
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
-
-    with open('private_key.pem', 'wb') as f:
+    with open('Keys/' + list_k[0], 'wb') as f:
         f.write(private_pem)
         f.write(public_pem)
-
-
-
-
