@@ -25,17 +25,17 @@ ________________________________________________________________________________
 predlog za strukturu enkriptovanog podatka:
 
 -------------------------------
-1 = ID javnog kljuca kojim se enkriptuje kljuc sesije Ks
-2 = E(Pu,Ks)
+64_bit = ID javnog kljuca kojim se enkriptuje kljuc sesije Ks
+1024/2048_bit = E(Pu,Ks)
 -------------------------------
-3 = Timestamp
-4 = ID javnog kljuca koji je uparen sa privatnim kljucem kojim je autentifikovana poruka
-5 = pocetak vrenodsti H(M), da bi primaoc poruke mogao da proveri da li je dobro desiforvao poruku
-6 = E(Pr,H(M))
+-- = Timestamp
+64_bit = ID javnog kljuca koji je uparen sa privatnim kljucem kojim je autentifikovana poruka
+64_bit = pocetak vrenodsti H(M), da bi primaoc poruke mogao da proveri da li je dobro desiforvao poruku
+1024/2048_bit = E(Pr,H(M))
 -------------------------------
-7 = naziv fajla
-8 = Timestamp
-9 = M
+-- = naziv fajla
+-- = Timestamp
+ostatak_bit = M
 
 ______________________________________________________________________________________________
 
@@ -46,7 +46,7 @@ TO_SEND = ""
 
 TO_SEND = M + [Timestamp] + Filename ->
 TO_SEND += E(Pr_a(H(M))) + deo(H(M)) + ID_Pu_a + [Timestamp] ->
-TO_SEND = ZIP(TO_SEND) ->
+--TO_SEND = ZIP(TO_SEND) ->
 TO_SEND = E(Ks, TO_SEND) ->
 TO_SEND += E(Pu_b, Ks) + ID_Pu_b ->
-TO_SEND = R64(TO_SEND)
+--TO_SEND = R64(TO_SEND)

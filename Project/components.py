@@ -1,5 +1,6 @@
-import pygame
 from enum import Enum
+
+import pygame
 
 
 class MOD(Enum):
@@ -108,7 +109,7 @@ class CheckBox:
 class Table:
     def __init__(self, x, y, column_names, data, column_width=None):
         if column_width is None:
-            column_width = [110, 210, 310, 310, 310]
+            column_width = [225, 225, 225, 225, 225, 225]
         self.x = x
         self.y = y
         self.column_names = column_names
@@ -143,7 +144,7 @@ class Table:
                                         self.y + self.header_height + row_index * self.row_height,
                                         self.column_width[col_index], self.row_height)
                 pygame.draw.rect(screen, LIGHT_GRAY, cell_rect)
-                text_surface = font.render(str(cell_data), True, BLACK)
+                text_surface = font.render(str(cell_data if len(cell_data) < 20 else cell_data[:17]+"..."), True, BLACK)
                 text_rect = text_surface.get_rect(center=cell_rect.center)
                 screen.blit(text_surface, text_rect)
                 agg_col_width += self.column_width[col_index]

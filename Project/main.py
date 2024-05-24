@@ -1,5 +1,3 @@
-import glob
-import os
 import sys
 from components import *
 from algorithms import *
@@ -35,37 +33,6 @@ def draw_components(color, components):
     main_screen.fill(color)
     for component in components:
         component.draw(main_screen)
-
-
-def get_keys_from_files(dir_path, filter_id=None):
-    public_key_data = []
-    private_key_data = []
-
-    files = glob.glob(os.path.join(dir_path, '*'))
-
-    for file_path in files:
-        if os.path.isfile(file_path):
-            data_row = ["00:00:00", "", 0, 0, "example@gmail.com"]
-            row_mode = 0
-            with open(file_path, 'r') as file:
-                content = file.read().split('\n')
-                for line in content:
-                    if "#TIME" in line: data_row[0] = line
-                    if "#USER" in line: data_row[-1] = line
-                    if row_mode == 1 and data_row[2] == 0: data_row[2] = line[:20] + "..."
-                    if row_mode == 2 and data_row[3] == 0: data_row[3] = line[:20] + "..."
-                    if "PUBLIC" in line: row_mode = 1
-                    if "PRIVATE" in line: row_mode = 2
-                    if "END" in line: row_mode = 0
-                    if row_mode == 1: data_row[1] += line
-                    data_row[1] = data_row[1][-15:]
-
-            if filter_id is None or filter_id == data_row[-1]:
-                private_key_data.append([data_row[0], data_row[1], data_row[2], data_row[4]])
-                if data_row[3] != 0:
-                    public_key_data.append(data_row)
-
-    return public_key_data, private_key_data
 
 
 def main():
@@ -135,6 +102,7 @@ def main():
 
         elif SCREEN_MOD == MOD.DECRYPT:
             components = [return_button]
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Decript",lambda: decrypt_message('output.bin')))
             draw_components(PURPLE, components)
             handle_events(components)
 
@@ -145,13 +113,15 @@ def main():
             handle_events(components, radio_buttons)
 
         elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
-            public_key_data, private_key_data = get_keys_from_files("./Keys")
+            private_key_data = get_keys_from_files("./Keys", filter_private=True)
+            public_key_data = get_keys_from_files("./Keys")
+
             components = [return_button]
             components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
-            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2 + 40))
+            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2))
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE", lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
-            components.append(Table((WIDTH - 1250) // 2, 80,["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "User ID"],public_key_data))
-            components.append(Table((WIDTH - 940) // 2, HEIGHT // 2 + 80, ["Timestamp", "Key ID", "Public Key", "User ID"],private_key_data))
+            components.append(Table((WIDTH - 1350) // 2, 80,["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "Key Size", "User ID"],private_key_data))
+            components.append(Table((WIDTH - 1125) // 2, HEIGHT // 2 + 40, ["Timestamp", "Key ID", "Public Key", "Key Size", "User ID"],public_key_data))
 
             draw_components(WHITE, components)
             handle_events(components)
@@ -165,4 +135,6 @@ def main():
         clock.tick(30)
 
 
+write_in_bianry_file()
 main()
+
