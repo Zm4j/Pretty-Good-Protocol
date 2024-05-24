@@ -135,6 +135,6 @@ def main():
         clock.tick(30)
 
 
-write_in_bianry_file()
+write_in_bianary_file()
 main()
 

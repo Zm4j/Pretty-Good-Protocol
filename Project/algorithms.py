@@ -5,7 +5,7 @@ import os
 import rsa
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-
+from datetime import datetime
 
 def generate_keys(list_k):
     # Generate private key
@@ -13,6 +13,8 @@ def generate_keys(list_k):
         public_exponent=65537,
         key_size=int(list_k[2])
     )
+
+
     # Generate public key from the private key
     public_key = private_key.public_key()
 
@@ -29,7 +31,27 @@ def generate_keys(list_k):
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
+    #TODO - POTENCIJALNA IZMENA
+    # Get the current date and time
+    current_timestamp = datetime.now()
+
+    # Print the current timestamp
+    print(current_timestamp)
+
+    print("GENERATE KEY: ", list_k)
+
+    line_time = "#TIME " + str(current_timestamp) + "\n"
+    line_user = "#USER " + str(list_k[1]) + "\n"
+    line_size = "#SIZE " + str(list_k[2]) + "\n"
+
+    """
+    string_data = "Hello, this is a string."
+    file.write(string_data.encode('utf-8'))
+    """
     with open('Keys/' + list_k[0], 'wb') as f:
+        f.write(line_time.encode('utf-8'))
+        f.write(line_user.encode('utf-8'))
+        f.write(line_size.encode('utf-8'))
         f.write(private_pem)
         f.write(public_pem)
 
@@ -70,11 +92,12 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
 
 
 def decrypt_message(file_name):
+    print(file_name)
     file = open(file_name, "rb")
     file_stat = os.stat(file_name)
 
     PK_ID = file.read(8).decode('utf8')
-
+    print(PK_ID)
     public_key_data = get_keys_from_files("./Keys", filter_id=PK_ID)
     print(public_key_data[0])
     PK_SIZE = int(public_key_data[0][3])
@@ -84,7 +107,7 @@ def decrypt_message(file_name):
     ENC_KS = file.read(PK_SIZE//8)
 
 
-def write_in_bianry_file():
+def write_in_bianary_file():
     file = open("output.bin", "wb")
 
     Pu_ID = 'PQIDAQAB'
