@@ -144,7 +144,7 @@ class Table:
                                         self.y + self.header_height + row_index * self.row_height,
                                         self.column_width[col_index], self.row_height)
                 pygame.draw.rect(screen, LIGHT_GRAY, cell_rect)
-                text_surface = font.render(str(cell_data if len(cell_data) < 20 else cell_data[:17]+"..."), True, BLACK)
+                text_surface = font.render(str(cell_data if len(cell_data) < 22 else cell_data[:19]+"..."), True, BLACK)
                 text_rect = text_surface.get_rect(center=cell_rect.center)
                 screen.blit(text_surface, text_rect)
                 agg_col_width += self.column_width[col_index]

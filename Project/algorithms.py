@@ -1,35 +1,64 @@
-import base64
 import glob
-import math
 import os
-import rsa
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
+import time
 from datetime import datetime
+import gmpy2
+from gmpy2 import mpz, powmod, gcd, invert
+
+
+def key_to_bytes(key):
+    e_or_d, n = key
+    e_or_d_bytes = e_or_d.digits(16).encode()  # Serialize as hexadecimal string
+    n_bytes = n.digits(16).encode()
+
+    return e_or_d_bytes, n_bytes
+
+
+def bytes_to_key(e_or_d_bytes, n_bytes):
+    e_or_d = mpz(e_or_d_bytes.decode(), 16)  # Deserialize from hexadecimal string
+    n = mpz(n_bytes.decode(), 16)
+
+    return e_or_d, n
+
+
+def generate_rsa_keys(bit_size=1024):
+    seed = int(time.time() * 1000)
+    state = gmpy2.random_state(seed)
+    p = gmpy2.next_prime(gmpy2.mpz_rrandomb(state, bit_size // 2))
+    q = gmpy2.next_prime(gmpy2.mpz_rrandomb(state, bit_size // 2))
+
+    n = p * q
+    phi_n = (p - 1) * (q - 1)
+
+    e = mpz(65537)
+    if gcd(e, phi_n) != 1:
+        e = gmpy2.next_prime(e)
+    d = invert(e, phi_n)
+
+    return (e, n), (d, n)
+
+
+def encrypt_rsa(message, public_key):
+    e, n = public_key
+    m = mpz(message)
+    c = powmod(m, e, n)
+    return c
+
+
+def decrypt_rsa(ciphertext, private_key):
+    d, n = private_key
+    m = powmod(ciphertext, d, n)
+    return m
+
 
 def generate_keys(list_k):
     # Generate private key
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=int(list_k[2])
-    )
 
-
-    # Generate public key from the private key
-    public_key = private_key.public_key()
-
-    # Serialize private key to PEM format
-    private_pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-
-    # Serialize public key to PEM format
-    public_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
+    public_key, private_key = generate_rsa_keys(int(list_k[2]))
+    public_key_bytes = key_to_bytes(public_key)
+    private_key_bytes = key_to_bytes(private_key)
+    print(public_key_bytes)
+    print(private_key_bytes)
 
     #TODO - POTENCIJALNA IZMENA
     # Get the current date and time
@@ -52,8 +81,12 @@ def generate_keys(list_k):
         f.write(line_time.encode('utf-8'))
         f.write(line_user.encode('utf-8'))
         f.write(line_size.encode('utf-8'))
-        f.write(private_pem)
-        f.write(public_pem)
+        f.write(b"-----BEGIN PUBLIC KEY-----\n")
+        f.write(public_key_bytes[0] + b'-' + public_key_bytes[1] + b'\n')
+        f.write(b"-----END PUBLIC KEY-----\n")
+        f.write(b"-----BEGIN RSA PRIVATE KEY-----\n")
+        f.write(private_key_bytes[0] + b'-' + private_key_bytes[1] + b'\n')
+        f.write(b"-----END RSA PRIVATE KEY-----\n")
 
 
 def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_private=False):

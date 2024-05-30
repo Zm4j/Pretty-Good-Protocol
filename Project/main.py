@@ -1,4 +1,8 @@
 import sys
+
+import gmpy2 as gmpy2
+import pygame as pygame
+
 from components import *
 from algorithms import *
 
@@ -135,6 +139,5 @@ def main():
         clock.tick(30)
 
 
-write_in_bianary_file()
+#write_in_bianary_file()
 main()
-
