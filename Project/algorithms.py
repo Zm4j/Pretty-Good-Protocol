@@ -1,90 +1,96 @@
-import binascii
 import glob
 import os
-import time
 from datetime import datetime
-import gmpy2
-from gmpy2 import mpz, powmod, gcd, invert
 import hashlib
 import base64
-
-def key_to_bytes(key):
-    e_or_d, n = key
-    e_or_d_bytes = e_or_d.digits(16).encode()  # Serialize as hexadecimal string
-    n_bytes = n.digits(16).encode()
-
-    return e_or_d_bytes, n_bytes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import hashes, serialization
 
 
-def bytes_to_key(e_or_d_bytes, n_bytes):
-    e_or_d = mpz(e_or_d_bytes.decode(), 16)  # Deserialize from hexadecimal string
-    n = mpz(n_bytes.decode(), 16)
-
-    return e_or_d, n
-
-
-def generate_rsa_keys(bit_size=1024):
-    seed = int(time.time() * 1000)
-    state = gmpy2.random_state(seed)
-    p = gmpy2.next_prime(gmpy2.mpz_rrandomb(state, bit_size // 2))
-    q = gmpy2.next_prime(gmpy2.mpz_rrandomb(state, bit_size // 2))
-
-    n = p * q
-    phi_n = (p - 1) * (q - 1)
-
-    e = mpz(65537)
-    if gcd(e, phi_n) != 1:
-        e = gmpy2.next_prime(e)
-    d = invert(e, phi_n)
-
-    return (e, n), (d, n)
+def rsa_generate_key_pair(key_size):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=key_size
+    )
+    public_key = private_key.public_key()
+    return private_key, public_key
 
 
-def encrypt_rsa(message, public_key):
-    e, n = public_key
-    m = mpz(message)
-    c = powmod(m, e, n)
-    return c
+def rsa_encrypt_message(message, public_key):
+    encrypted_message = public_key.encrypt(
+        message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return encrypted_message
 
 
-def decrypt_rsa(ciphertext, private_key):
-    d, n = private_key
-    m = powmod(ciphertext, d, n)
-    return m
+def rsa_decrypt_message(encrypted_message, private_key):
+    decrypted_message = private_key.decrypt(
+        encrypted_message,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return decrypted_message
+
+
+def rsa_sign_message(message, private_key):
+    signature = private_key.sign(
+        message,
+        padding.PSS(
+            mgf=padding.MGF1(hashes.SHA256()),
+            salt_length=padding.PSS.MAX_LENGTH
+        ),
+        hashes.SHA256()
+    )
+    return signature
+
+
+def rsa_verify_signature(message, signature, public_key):
+    try:
+        public_key.verify(
+            signature,
+            message,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        return True
+    except Exception as e:
+        print(f"Verification failed: {e}")
+        return False
 
 
 def generate_keys(list_k):
     # Generate private key
 
-    public_key, private_key = generate_rsa_keys(int(list_k[2]))
-    public_key_bytes = key_to_bytes(public_key)
-    private_key_bytes = key_to_bytes(private_key)
-    print(public_key_bytes)
-    print(private_key_bytes)
+    private_key, public_key = rsa_generate_key_pair(int(list_k[2]))
 
-    #TODO - POTENCIJALNA IZMENA
+    # TODO - POTENCIJALNA IZMENA
     # Get the current date and time
     current_timestamp = datetime.now()
 
-    # Print the current timestamp
-    print(current_timestamp)
-
-    print("GENERATE KEY: ", list_k)
-
-    line_time = "#TIME " + str(current_timestamp) + "\n"
-    line_user = "#USER " + str(list_k[1]) + "\n"
-    line_size = "#SIZE " + str(list_k[2]) + "\n"
-
     with open('Keys/' + list_k[0], 'wb') as f:
-        f.write(line_time.encode('utf-8'))
-        f.write(line_user.encode('utf-8'))
-        f.write(line_size.encode('utf-8'))
-        f.write(b"-----BEGIN PUBLIC KEY-----\n")
-        f.write(public_key_bytes[0] + b'-' + public_key_bytes[1] + b'\n')
-        f.write(b"-----END PUBLIC KEY-----\n")
-        f.write(b"-----BEGIN RSA PRIVATE KEY-----\n")
-        f.write(private_key_bytes[0] + b'-' + private_key_bytes[1] + b'\n')
-        f.write(b"-----END RSA PRIVATE KEY-----\n")
+        f.write(private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption()
+        ))
+        f.write(public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        ))
+        f.write(("#TIME " + str(current_timestamp) + "\n").encode('utf-8'))
+        f.write(("#USER " + str(list_k[1]) + "\n").encode('utf-8'))
+        f.write(("#SIZE " + str(list_k[2]) + "\n").encode('utf-8'))
 
 
 def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_private=False):
@@ -101,43 +107,60 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
                 content = file.read().split('\n')
                 row_mode = 0
                 for line in content:
-                    if "#TIME" in line: data_row[0] = line[6:]
-                    if "#SIZE" in line: data_row[-2] = line[6:]
-                    if "#USER" in line: data_row[-1] = line[6:]
-                    if "END" in line: row_mode = 0
-                    if row_mode == 1: data_row[2] += line
-                    if row_mode == 2: data_row[3] += line
-                    if "BEGIN PUBLIC KEY" in line: row_mode = 1
-                    if "BEGIN RSA PRIVATE KEY" in line: row_mode = 2
+                    if "#TIME" in line:
+                        data_row[0] = line[6:]
+                    if "#SIZE" in line:
+                        data_row[-2] = line[6:]
+                    if "#USER" in line:
+                        data_row[-1] = line[6:]
+                    if "END" in line:
+                        row_mode = 0
+                    if row_mode == 1:
+                        data_row[2] += line
+                    if row_mode == 2:
+                        data_row[3] += line
+                    if "BEGIN PUBLIC KEY" in line:
+                        row_mode = 1
+                    if "BEGIN RSA PRIVATE KEY" in line:
+                        row_mode = 2
 
                 data_row[1] = data_row[2][-8:]
             if (filter_user is None or filter_user == data_row[-1]) and (filter_id is None or filter_id == data_row[1]):
                 public_key_data.append([data_row[0], data_row[1], data_row[2], data_row[-2], data_row[-1]])
 
                 if data_row[3] != "":
-                    private_key_data.append([data_row[0], data_row[1], data_row[2], data_row[3], data_row[-2], data_row[-1]])
+                    private_key_data.append(
+                        [data_row[0], data_row[1], data_row[2], data_row[3], data_row[-2], data_row[-1]])
 
     if not filter_private:
         return public_key_data
     return private_key_data
 
+
+# TODO########################################################################################
+
+
 def encrypt_message(file_name):
     pass
 
 
-#TODO
-def autentication():
+# TODO
+def authentication():
     message = "This is a secret message."
     hash_hex = hashlib.sha1(message.encode('utf-8')).hexdigest()
 
     print(f"SHA-1 hash: {hash_hex}")
 
+
 def radix64_encode(data):
     encoded_data = base64.b64encode(data)
     return encoded_data
+
+
 def radix64_decode(encoded_data):
     decoded_data = base64.b64decode(encoded_data)
     return decoded_data
+
 
 def crc24(data):
     crc = 0xB704CE
@@ -154,6 +177,8 @@ def add_pgp_headers(encoded_data):
     header = "-----BEGIN PGP MESSAGE-----\n"
     footer = "\n-----END PGP MESSAGE-----"
     return header + encoded_data.decode('ascii') + footer
+
+
 def radix_64():
     # Original data
     data = b'This is a secret message.'
@@ -173,6 +198,8 @@ def radix_64():
 
     print(pgp_message)
 
+
+# TODO#########################################################################
 def decrypt_message(file_name):
     print(file_name)
     file = open(file_name, "rb")
@@ -186,18 +213,4 @@ def decrypt_message(file_name):
 
     PUBLIC_KEY = public_key_data[0][2]
 
-    ENC_KS = file.read(PK_SIZE//8)
-
-
-def write_in_bianary_file():
-    file = open("output.bin", "wb")
-
-    Pu_ID = 'PQIDAQAB'
-
-    private_key_data = get_keys_from_files("./Keys", filter_id=Pu_ID, filter_private=True)
-    print(private_key_data[0])
-    PK_SIZE = int(private_key_data[0][4])
-
-    PRIVATE_KEY = private_key_data[0][3]
-
-    file.write(Pu_ID.encode('utf8'))
+    ENC_KS = file.read(PK_SIZE // 8)

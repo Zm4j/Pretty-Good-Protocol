@@ -2,6 +2,7 @@ import sys
 
 import gmpy2 as gmpy2
 import pygame as pygame
+from cryptography.hazmat.primitives import serialization
 
 from components import *
 from algorithms import *
@@ -107,7 +108,7 @@ def main():
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",
                                      lambda: encrypt_message('output.bin')))
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Autentification",
-                                     lambda: autentication()
+                                     lambda: authentication()
                                      ))
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Radix-64",
                                      lambda: radix_64()
@@ -149,6 +150,4 @@ def main():
         pygame.display.flip()
         clock.tick(30)
 
-
-#write_in_bianary_file()
 main()
