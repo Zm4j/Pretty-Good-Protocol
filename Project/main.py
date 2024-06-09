@@ -45,6 +45,7 @@ def main():
 
     # components for generate mod
     G1_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
+    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
     G1_email = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
     G1_bits = TextBox((WIDTH - BUTTON_WIDTH) // 2, 250, 350, 50)
     G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
@@ -101,6 +102,16 @@ def main():
 
         elif SCREEN_MOD == MOD.ENCRYPT:
             components = [return_button]
+            components.append(Label("Message : ", 100, 60))
+            components.append(G2_massage)
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",
+                                     lambda: encrypt_message('output.bin')))
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Autentification",
+                                     lambda: autentication()
+                                     ))
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Radix-64",
+                                     lambda: radix_64()
+                                     ))
             draw_components(LIGHT_BLUE, components)
             handle_events(components)
 

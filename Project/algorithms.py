@@ -1,10 +1,12 @@
+import binascii
 import glob
 import os
 import time
 from datetime import datetime
 import gmpy2
 from gmpy2 import mpz, powmod, gcd, invert
-
+import hashlib
+import base64
 
 def key_to_bytes(key):
     e_or_d, n = key
@@ -73,10 +75,6 @@ def generate_keys(list_k):
     line_user = "#USER " + str(list_k[1]) + "\n"
     line_size = "#SIZE " + str(list_k[2]) + "\n"
 
-    """
-    string_data = "Hello, this is a string."
-    file.write(string_data.encode('utf-8'))
-    """
     with open('Keys/' + list_k[0], 'wb') as f:
         f.write(line_time.encode('utf-8'))
         f.write(line_user.encode('utf-8'))
@@ -123,6 +121,57 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
         return public_key_data
     return private_key_data
 
+def encrypt_message(file_name):
+    pass
+
+
+#TODO
+def autentication():
+    message = "This is a secret message."
+    hash_hex = hashlib.sha1(message.encode('utf-8')).hexdigest()
+
+    print(f"SHA-1 hash: {hash_hex}")
+
+def radix64_encode(data):
+    encoded_data = base64.b64encode(data)
+    return encoded_data
+def radix64_decode(encoded_data):
+    decoded_data = base64.b64decode(encoded_data)
+    return decoded_data
+
+def crc24(data):
+    crc = 0xB704CE
+    for byte in data:
+        crc ^= byte << 16
+        for _ in range(8):
+            crc <<= 1
+            if crc & 0x1000000:
+                crc ^= 0x1864CFB
+    return crc & 0xFFFFFF
+
+
+def add_pgp_headers(encoded_data):
+    header = "-----BEGIN PGP MESSAGE-----\n"
+    footer = "\n-----END PGP MESSAGE-----"
+    return header + encoded_data.decode('ascii') + footer
+def radix_64():
+    # Original data
+    data = b'This is a secret message.'
+
+    # Encode data
+    encoded_data = radix64_encode(data)
+
+    # Compute CRC-24
+    crc_value = crc24(data)
+    crc_bytes = crc_value.to_bytes(3, byteorder='big')
+
+    # Append CRC to the encoded data
+    encoded_with_crc = encoded_data + b'\n=' + base64.b64encode(crc_bytes)
+
+    # Add headers and footers
+    pgp_message = add_pgp_headers(encoded_with_crc)
+
+    print(pgp_message)
 
 def decrypt_message(file_name):
     print(file_name)
