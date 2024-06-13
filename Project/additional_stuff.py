@@ -93,6 +93,18 @@ def AES128_inverse_shift_rows(block):
     return (np.array(shifted)).reshape((4, 4))
 
 
+def AES128_multiply_GF8(ci, bi):
+    p = 0
+    while ci:
+        if ci & 1:
+            p ^= bi
+        bi <<= 1
+        if bi & 0x100:
+            bi ^= 0x11b
+        ci >>= 1
+    return p
+
+
 def AES128_mix_columns(block):
     C = [[2, 3, 1, 1],
          [1, 2, 3, 1],
@@ -107,21 +119,9 @@ def AES128_mix_columns(block):
 
     for c_i in C:
         for b_i in block_t:
-
             elem = 0
             for i in range(4):
-                if c_i[i] == 1:
-                    elem ^= b_i[i]
-                elif c_i[i] == 2:
-                    if b_i[i] & 0x80:
-                        elem ^= (b_i[i] << 1) ^ 0x11B
-                    else:
-                        elem ^= (b_i[i] << 1)
-                else:
-                    if b_i[i] & 0x80:
-                        elem ^= (b_i[i] << 1) ^ 0x11B ^ b_i[i]
-                    else:
-                        elem ^= (b_i[i] << 1) ^ b_i[i]
+                elem ^= AES128_multiply_GF8(c_i[i], b_i[i])
 
             rez.append(elem)
 
@@ -132,9 +132,9 @@ def AES128_mix_columns(block):
 
 def AES128_inverse_mix_columns(block):
     C_inv = [[14, 11, 13, 9],
-         [9, 14, 11, 13],
-         [13, 9, 14, 11],
-         [11, 13, 9, 14]]
+             [9, 14, 11, 13],
+             [13, 9, 14, 11],
+             [11, 13, 9, 14]]
 
     block = np.array([item for sublist in block for item in sublist])
 
@@ -146,28 +146,8 @@ def AES128_inverse_mix_columns(block):
         for b_i in block_t:
             elem = 0
             for i in range(4):
-                if c_i[i] == 0x09:
-                    elem ^= multiply_GF(0x09, b_i[i])
-                elif c_i[i] == 0x0b:
-                    elem ^= multiply_GF(0x0b, b_i[i])
-                elif c_i[i] == 0x0d:
-                    elem ^= multiply_GF(0x0d, b_i[i])
-                elif c_i[i] == 0x0e:
-                    elem ^= multiply_GF(0x0e, b_i[i])
+                elem ^= AES128_multiply_GF8(c_i[i], b_i[i])
             rez.append(elem)
 
     rez = (np.array(rez)).reshape((4, 4))
     return rez
-
-def multiply_GF(a, b):
-    # Multiply two numbers in GF(2^8)
-    p = 0
-    for _ in range(8):
-        if b & 1:
-            p ^= a
-        hi_bit_set = a & 0x80
-        a <<= 1
-        if hi_bit_set:
-            a ^= 0x11b  # irreducible polynomial x^8 + x^4 + x^3 + x + 1
-        b >>= 1
-    return p

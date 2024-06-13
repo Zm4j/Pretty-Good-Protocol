@@ -168,20 +168,11 @@ def main():
 
 
 m = b'ova poruka je tekstualnog tipa i sluzi kao primer koji se koristi za testiranje rada aes128 algoritma za enkripciju poruke kljuca isto 128 bita'
-password = '12345'
+password = 'casdasdasdasd'
 k = hashlib.sha1(password.encode('utf-8')).hexdigest()
 k = bytes.fromhex(k)[:16]
 print(k)
 print(AES128_encryption(m, k))
 print(AES128_decryption(AES128_encryption(m, k), k))
 
-asd = [0x87, 0xF2, 0x4D, 0x97,
-       0x6E, 0x4C, 0x90, 0xEC,
-       0x46, 0xE7, 0x4A, 0xC3,
-       0xA6, 0x8C, 0xD8, 0x95]
-
-asd = (np.array(asd)).reshape((4, 4))
-print(asd)
-print(AES128_mix_columns(asd))
-print(AES128_inverse_mix_columns(AES128_mix_columns(asd)))
 #main()

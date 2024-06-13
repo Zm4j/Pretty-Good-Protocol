@@ -113,9 +113,8 @@ def AES128_encryption(message, key):
             block = AES128_substitute(block)
             block = AES128_shift_rows(block)
             if round_num < 9:
-                pass
-                # TODO
-                #  block = AES128_mix_columns(block)
+                block = AES128_mix_columns(block)
+
             block = AES128_add_round_key(block, key_list[1+round_num])
 
         for i in range(4):
@@ -143,10 +142,9 @@ def AES128_decryption(encrypted_message, key):
             block = AES128_inverse_shift_rows(block)
             block = AES128_inverse_substitute(block)
             block = AES128_add_round_key(block, key_list[9 - round_num])
-            if round_num > 0:
-                # TODO
-                #  block = AES128_inverse_mix_columns(block)
-                pass
+
+            if round_num < 9:
+                block = AES128_inverse_mix_columns(block)
 
         for i in range(4):
             for j in range(4):
@@ -245,8 +243,6 @@ def encrypt_message(file_name, message, list_modes):
     message = message.encode('utf-8')
 
     if list_modes[1]:
-        SCREEN_MOD = 5
-
         while True:
             pass
 
