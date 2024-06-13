@@ -46,16 +46,17 @@ def main():
 
     # components for generate mod
     G1_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
-    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
     G1_email = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
     G1_bits = TextBox((WIDTH - BUTTON_WIDTH) // 2, 250, 350, 50)
     G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
 
-    checkboxes = []
-    checkbox_y = 50
-    for i in range(5):
-        checkboxes.append(CheckBox(350, checkbox_y, 20, f"Checkbox {i + 1}"))
-        checkbox_y += 70
+    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
+    G2_file_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
+    G2_checkboxes = [CheckBox(200, 300 + i*80, 20, ["TAJNOST", "AUTENTIKACIJA", "KOMPRESIJA", "RADIX64"][i]) for i in range(4)]
+    G2_encription_key = ""
+    G2_verify_key = ""
+
+    G4_user_id = TextBox(50, HEIGHT-100, 350, 50)
 
     radio_buttons = [
         RadioButton(100, 100, "Option 1"),
@@ -63,11 +64,11 @@ def main():
         RadioButton(100, 200, "Option 3")
     ]
 
-    ind = 0
     while True:
-        clearscreen()
-
         if SCREEN_MOD == MOD.DEFAULT:
+            # TODO brisi sve promenljive, to treba umesto ind=1
+            clearscreen()
+
             components = []
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT,"Generate Key", lambda: set_screen_mod(MOD.GENERATE)))
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "View Key Tables",lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
@@ -77,13 +78,17 @@ def main():
             draw_components(WHITE, components)
             handle_events(components)
 
-            if G1_name.getText() != '' and G1_email.getText() != '' and G1_bits.getText() != '' and G1_password.getText() != '' and ind == 0:
+            if G1_name.getText() != '' and G1_email.getText() != '' and G1_bits.getText() != '' and G1_password.getText() != '':
                 GENERATE_KEY_VALUES.append(G1_name.getText())
                 GENERATE_KEY_VALUES.append(G1_email.getText())
                 GENERATE_KEY_VALUES.append(G1_bits.getText())
                 GENERATE_KEY_VALUES.append(G1_password.getText())
                 generate_keys(GENERATE_KEY_VALUES)
-                ind = 1
+
+            G1_name.setText("")
+            G1_password.setText("")
+            G1_bits.setText("")
+            G1_email.setText("")
 
         elif SCREEN_MOD == MOD.GENERATE:
             # TODO MOD treba da se menja !!!
@@ -105,16 +110,24 @@ def main():
             components = [return_button]
             components.append(Label("Message : ", 100, 60))
             components.append(G2_massage)
-            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",
-                                     lambda: encrypt_message('output.bin')))
-            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Autentification",
-                                     lambda: authentication()
-                                     ))
-            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Radix-64",
-                                     lambda: radix_64()
-                                     ))
-            draw_components(LIGHT_BLUE, components)
-            handle_events(components)
+            components.append(Label("File name : ", 100, 160))
+            components.append(G2_file_name)
+
+            list_modes = [G2_checkboxes[i].isChecked() for i in range(4)]
+
+            if G2_checkboxes[0].isChecked():
+                components.append(Button((WIDTH - BUTTON_WIDTH) // 2 + 200, (HEIGHT - 6 * BUTTON_HEIGHT)*7 // 6, BUTTON_WIDTH, BUTTON_HEIGHT, "ENCRIPTION KEY",lambda: set_screen_mod(MOD.SELECT_KEY)))
+
+            if G2_checkboxes[1].isChecked():
+                components.append(Button((WIDTH - BUTTON_WIDTH) // 2 - 200, (HEIGHT - 6 * BUTTON_HEIGHT)*7 // 6, BUTTON_WIDTH, BUTTON_HEIGHT, "VERIFY KEY",lambda: set_screen_mod(MOD.SELECT_KEY)))
+
+            if not(G2_checkboxes[0].isChecked() and G2_encription_key == "") and not(G2_checkboxes[1].isChecked() and G2_verify_key==""):
+                components.append(Button((WIDTH - BUTTON_WIDTH) // 2, HEIGHT - 150, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",lambda: encrypt_message('output.bin', G2_massage.getText(), list_modes)))
+
+            draw_components(LIGHT_BLUE, components + G2_checkboxes)
+            handle_events(components + G2_checkboxes)
+            # components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Autentification",lambda: authentication()))
+            # components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Radix-64",lambda: radix_64()))
 
         elif SCREEN_MOD == MOD.DECRYPT:
             components = [return_button]
@@ -124,15 +137,18 @@ def main():
 
         elif SCREEN_MOD == MOD.TEST:
             components = [return_button]
-            components += checkboxes + radio_buttons
+            components += radio_buttons
             draw_components(WHITE, components)
             handle_events(components, radio_buttons)
 
         elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
-            private_key_data = get_keys_from_files("./Keys", filter_private=True)
-            public_key_data = get_keys_from_files("./Keys")
+            filter_id = G4_user_id.getText()
+            if filter_id == "see_all_keys":
+                filter_id = None
+            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id)
+            public_key_data = get_keys_from_files("./Keys",  filter_user=filter_id)
 
-            components = [return_button]
+            components = [return_button, G4_user_id]
             components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
             components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2))
             components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE", lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
@@ -150,4 +166,22 @@ def main():
         pygame.display.flip()
         clock.tick(30)
 
-main()
+
+m = b'ova poruka je tekstualnog tipa i sluzi kao primer koji se koristi za testiranje rada aes128 algoritma za enkripciju poruke kljuca isto 128 bita'
+password = '12345'
+k = hashlib.sha1(password.encode('utf-8')).hexdigest()
+k = bytes.fromhex(k)[:16]
+print(k)
+print(AES128_encryption(m, k))
+print(AES128_decryption(AES128_encryption(m, k), k))
+
+asd = [0x87, 0xF2, 0x4D, 0x97,
+       0x6E, 0x4C, 0x90, 0xEC,
+       0x46, 0xE7, 0x4A, 0xC3,
+       0xA6, 0x8C, 0xD8, 0x95]
+
+asd = (np.array(asd)).reshape((4, 4))
+print(asd)
+print(AES128_mix_columns(asd))
+print(AES128_inverse_mix_columns(AES128_mix_columns(asd)))
+#main()

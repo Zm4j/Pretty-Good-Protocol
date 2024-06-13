@@ -10,6 +10,7 @@ class MOD(Enum):
     ENCRYPT = 2
     DECRYPT = 3
     KEY_TABLE_VIEW = 4
+    SELECT_KEY = 5
 
 
 WIDTH, HEIGHT = 1500, 800
@@ -59,6 +60,9 @@ class TextBox:
 
     def getText(self):
         return self.text
+
+    def setText(self, text):
+        self.text = text
 
 
 class Button:

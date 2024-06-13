@@ -1,10 +1,13 @@
 import glob
 import os
+import zlib
 from datetime import datetime
 import hashlib
 import base64
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
+import numpy as np
+from additional_stuff import *
 
 
 def rsa_generate_key_pair(key_size):
@@ -69,25 +72,113 @@ def rsa_verify_signature(message, signature, public_key):
         return False
 
 
+def radix64_encode(data):
+    encoded_data = base64.b64encode(data)
+    pgp_message = radix64_add_pgp_headers(encoded_data)
+    return pgp_message
+
+
+def radix64_decode(encoded_data):
+    decoded_data = base64.b64decode(
+        encoded_data[len("-----BEGIN PGP MESSAGE-----\n"):-len("\n-----END PGP MESSAGE-----")])
+    return decoded_data
+
+
+def zip_compress_data(data):
+    compressed_data = zlib.compress(data)
+    return compressed_data
+
+
+def zip_decompress_data(data):
+    decompressed_data = zlib.decompress(data)
+    return decompressed_data
+
+
+def AES128_encryption(message, key):
+    message += b'\x00'*15  # padding
+
+    key_list = AES128_generate_keys(key[:16])  # get key for AES rounds
+
+    encrypted_message = b""
+    # doing iterations with blocks size 128 bits
+    for block_num in range(16, len(message), 16):
+        block = np.array([message[block_num-16: block_num][i] for i in range(16)])
+
+        # transform block in matrix by columns
+        block = block.reshape((4, 4), order='F')
+
+        block = AES128_add_round_key(block, key_list[0])
+
+        for round_num in range(10):
+            block = AES128_substitute(block)
+            block = AES128_shift_rows(block)
+            if round_num < 9:
+                pass
+                # TODO
+                #  block = AES128_mix_columns(block)
+            block = AES128_add_round_key(block, key_list[1+round_num])
+
+        for i in range(4):
+            for j in range(4):
+                encrypted_message += int(block[j][i]).to_bytes(1, byteorder='big')
+
+    return encrypted_message
+
+
+def AES128_decryption(encrypted_message, key):
+
+    key_list = AES128_generate_keys(key[:16])  # get key for AES rounds
+
+    message = b""
+    # doing iterations with blocks size 128 bits
+    for block_num in range(16, len(encrypted_message), 16):
+        block = np.array([encrypted_message[block_num - 16: block_num][i] for i in range(16)])
+
+        # transform block in matrix by columns
+        block = block.reshape((4, 4), order='F')
+
+        block = AES128_add_round_key(block, key_list[10])
+
+        for round_num in range(10):
+            block = AES128_inverse_shift_rows(block)
+            block = AES128_inverse_substitute(block)
+            block = AES128_add_round_key(block, key_list[9 - round_num])
+            if round_num > 0:
+                # TODO
+                #  block = AES128_inverse_mix_columns(block)
+                pass
+
+        for i in range(4):
+            for j in range(4):
+                message += int(block[j][i]).to_bytes(1, byteorder='big')
+
+    return message
+
+
 def generate_keys(list_k):
     # Generate private key
+    password = hashlib.sha1(list_k[3].encode('utf-8')).hexdigest()
 
     private_key, public_key = rsa_generate_key_pair(int(list_k[2]))
-
-    # TODO - POTENCIJALNA IZMENA
-    # Get the current date and time
     current_timestamp = datetime.now()
 
-    with open('Keys/' + list_k[0], 'wb') as f:
-        f.write(private_key.private_bytes(
+    private_key = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
-        f.write(public_key.public_bytes(
+            encryption_algorithm=serialization.NoEncryption())
+    public_key = public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ))
+            format=serialization.PublicFormat.SubjectPublicKeyInfo)
+
+    print(private_key)
+    print(public_key)
+    print(password)
+
+    AES128_encryption(private_key, bytes.fromhex(password)[:16])
+
+    with open('Keys/' + list_k[0], 'wb') as f:
+        f.write(private_key)
+        f.write(public_key)
         f.write(("#TIME " + str(current_timestamp) + "\n").encode('utf-8'))
         f.write(("#USER " + str(list_k[1]) + "\n").encode('utf-8'))
         f.write(("#SIZE " + str(list_k[2]) + "\n").encode('utf-8'))
@@ -140,11 +231,6 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
 # TODO########################################################################################
 
 
-def encrypt_message(file_name):
-    pass
-
-
-# TODO
 def authentication():
     message = "This is a secret message."
     hash_hex = hashlib.sha1(message.encode('utf-8')).hexdigest()
@@ -152,54 +238,28 @@ def authentication():
     print(f"SHA-1 hash: {hash_hex}")
 
 
-def radix64_encode(data):
-    encoded_data = base64.b64encode(data)
-    return encoded_data
-
-
-def radix64_decode(encoded_data):
-    decoded_data = base64.b64decode(encoded_data)
-    return decoded_data
-
-
-def crc24(data):
-    crc = 0xB704CE
-    for byte in data:
-        crc ^= byte << 16
-        for _ in range(8):
-            crc <<= 1
-            if crc & 0x1000000:
-                crc ^= 0x1864CFB
-    return crc & 0xFFFFFF
-
-
-def add_pgp_headers(encoded_data):
-    header = "-----BEGIN PGP MESSAGE-----\n"
-    footer = "\n-----END PGP MESSAGE-----"
-    return header + encoded_data.decode('ascii') + footer
-
-
-def radix_64():
-    # Original data
-    data = b'This is a secret message.'
-
-    # Encode data
-    encoded_data = radix64_encode(data)
-
-    # Compute CRC-24
-    crc_value = crc24(data)
-    crc_bytes = crc_value.to_bytes(3, byteorder='big')
-
-    # Append CRC to the encoded data
-    encoded_with_crc = encoded_data + b'\n=' + base64.b64encode(crc_bytes)
-
-    # Add headers and footers
-    pgp_message = add_pgp_headers(encoded_with_crc)
-
-    print(pgp_message)
-
-
 # TODO#########################################################################
+
+
+def encrypt_message(file_name, message, list_modes):
+    message = message.encode('utf-8')
+
+    if list_modes[1]:
+        SCREEN_MOD = 5
+
+        while True:
+            pass
+
+    if list_modes[2]:  # zip
+        message = zip_compress_data(message)
+
+    if list_modes[3]:  # radix
+        message = radix64_encode(message)
+
+    with open(file_name, 'wb') as f:
+        f.write(message)
+
+
 def decrypt_message(file_name):
     print(file_name)
     file = open(file_name, "rb")
@@ -214,3 +274,4 @@ def decrypt_message(file_name):
     PUBLIC_KEY = public_key_data[0][2]
 
     ENC_KS = file.read(PK_SIZE // 8)
+
