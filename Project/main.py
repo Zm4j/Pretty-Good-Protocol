@@ -50,18 +50,16 @@ def main():
     G1_bits = TextBox((WIDTH - BUTTON_WIDTH) // 2, 250, 350, 50)
     G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
 
-    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
-    G2_file_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
+    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2-350, 50, 1050, 90)
+    G2_file_name = TextBox((WIDTH - BUTTON_WIDTH) // 2-350, 150, 350, 50)
     G2_checkboxes = [CheckBox(200, 300 + i*80, 20, ["TAJNOST", "AUTENTIKACIJA", "KOMPRESIJA", "RADIX64"][i]) for i in range(4)]
-    G2_encription_key = ""
-    G2_verify_key = ""
+    G2_encription_keyID = ""
+    G2_verify_keyID = ""
 
     G4_user_id = TextBox(50, HEIGHT-100, 350, 50)
 
     radio_buttons = [
-        RadioButton(100, 100, "Option 1"),
-        RadioButton(100, 150, "Option 2"),
-        RadioButton(100, 200, "Option 3")
+        RadioButton(50, 115 + i*20, "") for i in range(30)
     ]
 
     while True:
@@ -107,6 +105,9 @@ def main():
             handle_events(components)
 
         elif SCREEN_MOD == MOD.ENCRYPT:
+            G4_user_id.setText("")
+            for i in radio_buttons: i.clear_selected()
+
             components = [return_button]
             components.append(Label("Message : ", 100, 60))
             components.append(G2_massage)
@@ -116,18 +117,19 @@ def main():
             list_modes = [G2_checkboxes[i].isChecked() for i in range(4)]
 
             if G2_checkboxes[0].isChecked():
-                components.append(Button((WIDTH - BUTTON_WIDTH) // 2 + 200, (HEIGHT - 6 * BUTTON_HEIGHT)*7 // 6, BUTTON_WIDTH, BUTTON_HEIGHT, "ENCRIPTION KEY",lambda: set_screen_mod(MOD.SELECT_KEY)))
+                components.append(Button(500, 285, BUTTON_WIDTH, BUTTON_HEIGHT, "SELECT KEY", lambda: set_screen_mod(MOD.SELECT_KEY_E)))
+                components.append(Label("not selected" if G2_encription_keyID == "" else "selected  " + G2_encription_keyID, 800, 300))
 
             if G2_checkboxes[1].isChecked():
-                components.append(Button((WIDTH - BUTTON_WIDTH) // 2 - 200, (HEIGHT - 6 * BUTTON_HEIGHT)*7 // 6, BUTTON_WIDTH, BUTTON_HEIGHT, "VERIFY KEY",lambda: set_screen_mod(MOD.SELECT_KEY)))
+                components.append(Button(500, 365, BUTTON_WIDTH, BUTTON_HEIGHT, "SELECT KEY", lambda: set_screen_mod(MOD.SELECT_KEY_V)))
+                components.append(Label("not selected" if G2_verify_keyID == "" else "selected  " + G2_verify_keyID, 800, 380))
 
-            if not(G2_checkboxes[0].isChecked() and G2_encription_key == "") and not(G2_checkboxes[1].isChecked() and G2_verify_key==""):
+            #if not((G2_checkboxes[0].isChecked() and G2_encription_keyID == "") and (G2_checkboxes[1].isChecked() and G2_encription_keyID == "")):
+            if (G2_encription_keyID!="" or not G2_checkboxes[0].isChecked()) and (G2_verify_keyID!="" or not G2_checkboxes[1].isChecked()):
                 components.append(Button((WIDTH - BUTTON_WIDTH) // 2, HEIGHT - 150, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",lambda: encrypt_message('output.bin', G2_massage.getText(), list_modes)))
 
             draw_components(LIGHT_BLUE, components + G2_checkboxes)
             handle_events(components + G2_checkboxes)
-            # components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Autentification",lambda: authentication()))
-            # components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT + 6 * BUTTON_HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Radix-64",lambda: radix_64()))
 
         elif SCREEN_MOD == MOD.DECRYPT:
             components = [return_button]
@@ -135,28 +137,76 @@ def main():
             draw_components(PURPLE, components)
             handle_events(components)
 
+        elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
+            filter_id = G4_user_id.getText()
+            if filter_id == "see_all_keys":
+                filter_id = None
+
+            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id)
+            public_key_data = get_keys_from_files("./Keys", filter_user=filter_id)
+
+            components = [return_button, G4_user_id]
+            components.append(Label("E-mail", 70, HEIGHT - 140))
+            components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
+            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2))
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE",lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
+            components.append(Table((WIDTH - 1350) // 2, 80,["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "Key Size","User ID"],private_key_data))
+            components.append(Table((WIDTH - 1125) // 2, HEIGHT // 2 + 40,["Timestamp", "Key ID", "Public Key", "Key Size", "User ID"],public_key_data))
+
+            draw_components(WHITE, components)
+            handle_events(components)
+
+        elif SCREEN_MOD == MOD.SELECT_KEY_E:
+            filter_id = G4_user_id.getText()
+            if filter_id == "see_all_keys":
+                filter_id = None
+
+            components = [G4_user_id]
+            components.append(Label("E-mail", 70, HEIGHT-140))
+            components.append(Button(0, 0, BUTTON_WIDTH // 2, BUTTON_HEIGHT // 2, "return", lambda: set_screen_mod(MOD.ENCRYPT)))
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE",lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
+
+            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id)
+            components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
+            components.append(Table((WIDTH - 1350) // 2, 80, ["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "Key Size","User ID"], private_key_data))
+            radio_buttons_temp = radio_buttons[:len(private_key_data)]
+
+            for i in range(len(radio_buttons_temp)):
+                if radio_buttons_temp[i].is_selected():
+                    G2_encription_keyID = private_key_data[i][1]
+
+            components += radio_buttons_temp
+            draw_components(WHITE, components)
+            handle_events(components, radio_buttons)
+
+        elif SCREEN_MOD == MOD.SELECT_KEY_V:
+            filter_id = G4_user_id.getText()
+            if filter_id == "see_all_keys":
+                filter_id = None
+
+            components = [G4_user_id]
+            components.append(Label("E-mail", 70, HEIGHT-140))
+            components.append(Button(0, 0, BUTTON_WIDTH // 2, BUTTON_HEIGHT // 2, "return", lambda: set_screen_mod(MOD.ENCRYPT)))
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE",lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
+
+            public_key_data = get_keys_from_files("./Keys", filter_user=filter_id)
+            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, 40))
+            components.append(Table((WIDTH - 1125) // 2, 80, ["Timestamp", "Key ID", "Public Key", "Key Size", "User ID"], public_key_data))
+            radio_buttons_temp = radio_buttons[:len(public_key_data)]
+
+            for i in range(len(radio_buttons_temp)):
+                if radio_buttons_temp[i].is_selected():
+                    G2_verify_keyID= public_key_data[i][1]
+
+            components += radio_buttons_temp
+            draw_components(WHITE, components)
+            handle_events(components, radio_buttons)
+
         elif SCREEN_MOD == MOD.TEST:
             components = [return_button]
             components += radio_buttons
             draw_components(WHITE, components)
             handle_events(components, radio_buttons)
-
-        elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
-            filter_id = G4_user_id.getText()
-            if filter_id == "see_all_keys":
-                filter_id = None
-            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id)
-            public_key_data = get_keys_from_files("./Keys",  filter_user=filter_id)
-
-            components = [return_button, G4_user_id]
-            components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
-            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2))
-            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE", lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
-            components.append(Table((WIDTH - 1350) // 2, 80,["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "Key Size", "User ID"],private_key_data))
-            components.append(Table((WIDTH - 1125) // 2, HEIGHT // 2 + 40, ["Timestamp", "Key ID", "Public Key", "Key Size", "User ID"],public_key_data))
-
-            draw_components(WHITE, components)
-            handle_events(components)
 
         else:
             components = [return_button]
@@ -175,4 +225,4 @@ print(k)
 print(AES128_encryption(m, k))
 print(AES128_decryption(AES128_encryption(m, k), k))
 
-#main()
+main()

@@ -1,5 +1,5 @@
 from enum import Enum
-
+import pyperclip
 import pygame
 
 
@@ -10,7 +10,8 @@ class MOD(Enum):
     ENCRYPT = 2
     DECRYPT = 3
     KEY_TABLE_VIEW = 4
-    SELECT_KEY = 5
+    SELECT_KEY_E = 5
+    SELECT_KEY_V = 6
 
 
 WIDTH, HEIGHT = 1500, 800
@@ -33,9 +34,11 @@ SCREEN_MOD = MOD.DEFAULT
 
 class TextBox:
     def __init__(self, x, y, w, h):
+        self.width = w
         self.rect = pygame.Rect(x, y, w, h)
         self.text = ""
         self.active = False
+        self.font = pygame.font.SysFont('Consolas', 18)
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -43,20 +46,33 @@ class TextBox:
                 self.active = not self.active
             else:
                 self.active = False
+
         if event.type == pygame.KEYDOWN and self.active:
             if event.key == pygame.K_BACKSPACE:
                 self.text = self.text[:-1]
+            elif event.key == pygame.K_v and (
+                    pygame.key.get_mods() & pygame.KMOD_CTRL or pygame.key.get_mods() & pygame.KMOD_META):
+                clipboard_text = pyperclip.paste()
+                if clipboard_text:
+                    self.text += clipboard_text
+            elif event.key == pygame.K_DELETE and (
+                    pygame.key.get_mods() & pygame.KMOD_CTRL or pygame.key.get_mods() & pygame.KMOD_META):
+                # Ctrl + Delete to clear the textbox
+                self.text = ""
             else:
                 self.text += event.unicode
 
     def draw(self, screen):
-        font = pygame.font.Font(None, 25)
+        font = self.font
         outline_color = BLACK if self.active else GRAY
         pygame.draw.rect(screen, outline_color, self.rect, 2)
         pygame.draw.rect(screen, WHITE, self.rect.inflate(-4, -4))
-        if self.text != "":
-            text_surface = font.render(self.text, True, BLACK)
-            screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5))
+        i = 0
+        width = self.width * 179 // 1800
+        while i < len(self.text):
+            text_surface = font.render(self.text[i:i+width], True, BLACK)
+            screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5 + 18*(i//width)))
+            i += width
 
     def getText(self):
         return self.text
@@ -205,3 +221,9 @@ class RadioButton:
                 for button in group:
                     button.selected = False
                 self.selected = True
+
+    def is_selected(self):
+        return self.selected
+
+    def clear_selected(self):
+        self.selected = False

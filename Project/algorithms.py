@@ -72,6 +72,12 @@ def rsa_verify_signature(message, signature, public_key):
         return False
 
 
+def radix64_add_pgp_headers(encoded_data):
+    header = "-----BEGIN PGP MESSAGE-----\n"
+    footer = "\n-----END PGP MESSAGE-----"
+    return header + encoded_data.decode('ascii') + footer
+
+
 def radix64_encode(data):
     encoded_data = base64.b64encode(data)
     pgp_message = radix64_add_pgp_headers(encoded_data)
@@ -153,6 +159,9 @@ def AES128_decryption(encrypted_message, key):
     return message
 
 
+# TODO########################################################################################
+
+
 def generate_keys(list_k):
     # Generate private key
     password = hashlib.sha1(list_k[3].encode('utf-8')).hexdigest()
@@ -168,14 +177,16 @@ def generate_keys(list_k):
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
-    print(private_key)
-    print(public_key)
-    print(password)
-
-    AES128_encryption(private_key, bytes.fromhex(password)[:16])
+    #print(private_key)
+    private_key = private_key[len('-----BEGIN RSA PRIVATE KEY-----\n'):-len('-----END RSA PRIVATE KEY-----\n')]
+    #print(private_key)
+    enc_private_key = AES128_encryption(private_key, bytes.fromhex(password)[:16])
+    #print(enc_private_key)
+    enc_private_key = b'-----BEGIN RSA PRIVATE KEY-----\n' + enc_private_key + b'-----END RSA PRIVATE KEY-----\n'
+    #print(enc_private_key)
 
     with open('Keys/' + list_k[0], 'wb') as f:
-        f.write(private_key)
+        f.write(enc_private_key)
         f.write(public_key)
         f.write(("#TIME " + str(current_timestamp) + "\n").encode('utf-8'))
         f.write(("#USER " + str(list_k[1]) + "\n").encode('utf-8'))
@@ -192,8 +203,8 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
         if os.path.isfile(file_path):
             data_row = ["00:00:00", "", "", "", "", "example@gmail.com"]
 
-            with open(file_path, 'r') as file:
-                content = file.read().split('\n')
+            with open(file_path, 'rb') as file:
+                content = file.read().decode('utf8', errors='replace').split('\n')
                 row_mode = 0
                 for line in content:
                     if "#TIME" in line:
@@ -224,9 +235,6 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
     if not filter_private:
         return public_key_data
     return private_key_data
-
-
-# TODO########################################################################################
 
 
 def authentication():

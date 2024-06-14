@@ -20,12 +20,6 @@ S_BOX = [
 ]
 
 
-def radix64_add_pgp_headers(encoded_data):
-    header = "-----BEGIN PGP MESSAGE-----\n"
-    footer = "\n-----END PGP MESSAGE-----"
-    return header + encoded_data.decode('ascii') + footer
-
-
 def AES128_g(w, i):
     Rcon = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36]
     w1 = np.array([S_BOX[w[1] >> 4][w[1] & 0x0F] ^ Rcon[i],
