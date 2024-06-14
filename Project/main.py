@@ -216,7 +216,6 @@ def main():
         pygame.display.flip()
         clock.tick(30)
 
-
 m = b'ova poruka je tekstualnog tipa i sluzi kao primer koji se koristi za testiranje rada aes128 algoritma za enkripciju poruke kljuca isto 128 bita'
 password = 'casdasdasdasd'
 k = hashlib.sha1(password.encode('utf-8')).hexdigest()
@@ -225,4 +224,28 @@ print(k)
 print(AES128_encryption(m, k))
 print(AES128_decryption(AES128_encryption(m, k), k))
 
+key_private = ""
+
+
+hex_plaintext = "0123456789ABCDEF"
+
+password_des = 'sadailnikada'
+password_hash_des = hashlib.sha1(password_des.encode('utf-8')).hexdigest()
+password_hash_des = password_hash_des[:32]
+print(password_hash_des)
+
+print(f"Plaintext: {hex_plaintext}")
+ciphertext = DES_encryption(hex_plaintext, password_hash_des)
+
+print(f"Ciphertext: {ciphertext}")
+
+plaintext = DES_decryption(ciphertext, password_hash_des)
+print(f"Plaintext: {plaintext}")
+
+"""
+ciphertext_binary = bitarray(hex_to_binary(ch))
+
+print(ciphertext_binary)
+plaintext = DES_encryption(ciphertext_binary, key[::-1])
+"""
 main()
