@@ -160,6 +160,8 @@ class Table:
         for row_index, row_data in enumerate(self.data):
             agg_col_width = 0
             for col_index, cell_data in enumerate(row_data):
+                if col_index >= len(self.column_names):
+                    continue
                 cell_rect = pygame.Rect(self.x + agg_col_width,
                                         self.y + self.header_height + row_index * self.row_height,
                                         self.column_width[col_index], self.row_height)
@@ -225,5 +227,5 @@ class RadioButton:
     def is_selected(self):
         return self.selected
 
-    def clear_selected(self):
+    def clear(self):
         self.selected = False

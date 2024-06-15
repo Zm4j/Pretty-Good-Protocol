@@ -4,6 +4,8 @@ import zlib
 from datetime import datetime
 import hashlib
 import base64
+
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 import numpy as np
@@ -11,16 +13,24 @@ from additional_stuff import *
 from bitarray import bitarray
 from bitarray.util import ba2int, int2ba
 
+
 def rsa_generate_key_pair(key_size):
     private_key = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=key_size
+        key_size=key_size,
+        backend=default_backend()
     )
     public_key = private_key.public_key()
     return private_key, public_key
 
 
 def rsa_encrypt_message(message, public_key):
+    # Calculate the maximum message size for the given key size and padding
+    key_size_bytes = (public_key.key_size + 7) // 8
+    max_message_size = key_size_bytes - 2 * hashes.SHA256().digest_size - 2
+    if len(message) > max_message_size:
+        raise ValueError("Message is too long for the given key size")
+
     encrypted_message = public_key.encrypt(
         message,
         padding.OAEP(
@@ -102,14 +112,14 @@ def zip_decompress_data(data):
 
 
 def AES128_encryption(message, key):
-    message += b'\x00'*15  # padding
+    message += b'\x00' * 15  # padding
 
     key_list = AES128_generate_keys(key[:16])  # get key for AES rounds
 
     encrypted_message = b""
     # doing iterations with blocks size 128 bits
     for block_num in range(16, len(message), 16):
-        block = np.array([message[block_num-16: block_num][i] for i in range(16)])
+        block = np.array([message[block_num - 16: block_num][i] for i in range(16)])
 
         # transform block in matrix by columns
         block = block.reshape((4, 4), order='F')
@@ -122,7 +132,7 @@ def AES128_encryption(message, key):
             if round_num < 9:
                 block = AES128_mix_columns(block)
 
-            block = AES128_add_round_key(block, key_list[1+round_num])
+            block = AES128_add_round_key(block, key_list[1 + round_num])
 
         for i in range(4):
             for j in range(4):
@@ -132,7 +142,6 @@ def AES128_encryption(message, key):
 
 
 def AES128_decryption(encrypted_message, key):
-
     key_list = AES128_generate_keys(key[:16])  # get key for AES rounds
 
     message = b""
@@ -155,9 +164,12 @@ def AES128_decryption(encrypted_message, key):
 
         for i in range(4):
             for j in range(4):
+                if block_num + 16 >= len(encrypted_message) and int(block[j][i]) == 0:
+                    continue
                 message += int(block[j][i]).to_bytes(1, byteorder='big')
 
     return message
+
 
 IP = [
     58, 50, 42, 34, 26, 18, 10, 2,
@@ -275,29 +287,36 @@ KEY_SHIFTS = [
     1, 2, 2, 2, 2, 2, 2, 1
 ]
 
+
 def permute(block, matrix):
-    return [block[i-1] for i in matrix]
+    return [block[i - 1] for i in matrix]
+
 
 def feistel_function(f, left, right):
     return right, [left[i] ^ f[i] for i in range(len(f))]
 
+
 def xor(value1, value2):
     return [value1[i] ^ value2[i] for i in range(len(value1))]
+
+
 def sbox_substitution(bits):
     output = []
     for i in range(8):
-        block = bits[i*6:(i+1)*6]
+        block = bits[i * 6:(i + 1) * 6]
         row = (block[0] << 1) | block[5]
         col = (block[1] << 3) | (block[2] << 2) | (block[3] << 1) | block[4]
         sbox_value = S_BOXES[i][row][col]
         output.extend(int2ba(sbox_value, length=4))
     return output
 
+
 def f_function(right, subkey):
     expanded_right = permute(right, E)
     xored = xor(expanded_right, subkey)
     substituted = sbox_substitution(xored)
     return permute(substituted, P)
+
 
 def generate_subkeys(key):
     key = permute(key, PC1)
@@ -310,12 +329,14 @@ def generate_subkeys(key):
         subkeys.append(permute(C + D, PC2))
     return subkeys
 
+
 def from_hex_to_binary(hex):
     integer_value = int(hex, 16)
     binary_str = bin(integer_value)[2:]
     return binary_str.zfill(len(hex) * 4)
 
-def DES_encryption(block, key): # PROSLEDJUJU SE HEX VREDNOSTI !!!!
+
+def DES_encryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
     block = bitarray(from_hex_to_binary(block))
     key = bitarray(from_hex_to_binary(key))
 
@@ -355,6 +376,7 @@ def DES_decryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
         ciphertext_string += str(i)
     return hex(int(ciphertext_string, 2))[2:]
 
+
 # TODO########################################################################################
 
 
@@ -362,31 +384,31 @@ def generate_keys(list_k):
     # Generate private key
     password = hashlib.sha1(list_k[3].encode('utf-8')).hexdigest()
 
-    private_key, public_key = rsa_generate_key_pair(int(list_k[2]))
     current_timestamp = datetime.now()
+    private_key, public_key = rsa_generate_key_pair(int(list_k[2]))
 
-    private_key = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption())
-    public_key = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption())
 
-    #print(private_key)
-    private_key = private_key[len('-----BEGIN RSA PRIVATE KEY-----\n'):-len('-----END RSA PRIVATE KEY-----\n')]
-    #print(private_key)
-    enc_private_key = AES128_encryption(private_key, bytes.fromhex(password)[:16])
-    #print(enc_private_key)
-    enc_private_key = b'-----BEGIN RSA PRIVATE KEY-----\n' + enc_private_key + b'-----END RSA PRIVATE KEY-----\n'
-    #print(enc_private_key)
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo)
+
+    # private_key = private_key[len('-----BEGIN RSA PRIVATE KEY-----\n'):-len('-----END RSA PRIVATE KEY-----\n')]
+    enc_private_key = AES128_encryption(private_pem, bytes.fromhex(password)[:16])
+    enc_private_key = b'-----BEGIN RSA PRIVATE KEY-----\n' + enc_private_key + b'\n-----END RSA PRIVATE KEY-----\n'
+    print(enc_private_key.decode('utf8', errors='replace'))
 
     with open('Keys/' + list_k[0], 'wb') as f:
         f.write(enc_private_key)
-        f.write(public_key)
+        f.write(public_pem)
         f.write(("#TIME " + str(current_timestamp) + "\n").encode('utf-8'))
         f.write(("#USER " + str(list_k[1]) + "\n").encode('utf-8'))
         f.write(("#SIZE " + str(list_k[2]) + "\n").encode('utf-8'))
+        # OPCIONO CUVA SE LOZINKA ISTO RADI PROVERE PRI TRAZENJU PRIVATNOG KLJUCA
+        f.write(("#PASS " + str(list_k[3])).encode('utf-8'))
 
 
 def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_private=False):
@@ -397,36 +419,39 @@ def get_keys_from_files(dir_path, filter_user=None, filter_id=None, filter_priva
 
     for file_path in files:
         if os.path.isfile(file_path):
-            data_row = ["00:00:00", "", "", "", "", "example@gmail.com"]
+            data_row = [b"00:00:00", b"", b"", b"", b"", b"", b"example@gmail.com"]
 
             with open(file_path, 'rb') as file:
-                content = file.read().decode('utf8', errors='replace').split('\n')
+                content = file.read().split(b'\n')
                 row_mode = 0
                 for line in content:
-                    if "#TIME" in line:
+                    if b"#TIME" in line:
                         data_row[0] = line[6:]
-                    if "#SIZE" in line:
-                        data_row[-2] = line[6:]
-                    if "#USER" in line:
+                    if b"#USER" in line:
                         data_row[-1] = line[6:]
-                    if "END" in line:
-                        row_mode = 0
-                    if row_mode == 1:
-                        data_row[2] += line
-                    if row_mode == 2:
-                        data_row[3] += line
-                    if "BEGIN PUBLIC KEY" in line:
+                    if b"#SIZE" in line:
+                        data_row[-2] = line[6:]
+                    if b"#PASS" in line:
+                        data_row[-3] = line[6:]
+                    if b"BEGIN PUBLIC KEY" in line:
                         row_mode = 1
-                    if "BEGIN RSA PRIVATE KEY" in line:
+                    if b"BEGIN RSA PRIVATE KEY" in line:
                         row_mode = 2
+                    if row_mode == 1:
+                        data_row[2] += line + b'\n'
+                    if row_mode == 2:
+                        data_row[3] += line + b'\n'
+                    if b"END" in line:
+                        row_mode = 0
 
-                data_row[1] = data_row[2][-8:]
+                data_row[1] = data_row[2][-8 - len('\n-----END PUBLIC KEY-----\n'):-len('\n-----END PUBLIC KEY-----\n')]
             if (filter_user is None or filter_user == data_row[-1]) and (filter_id is None or filter_id == data_row[1]):
-                public_key_data.append([data_row[0], data_row[1], data_row[2], data_row[-2], data_row[-1]])
+                public_key_data.append(
+                    [data_row[0], data_row[1], data_row[2], data_row[-2], data_row[-1], data_row[-3]])
 
                 if data_row[3] != "":
                     private_key_data.append(
-                        [data_row[0], data_row[1], data_row[2], data_row[3], data_row[-2], data_row[-1]])
+                        [data_row[0], data_row[1], data_row[2], data_row[3], data_row[-2], data_row[-1], data_row[-3]])
 
     if not filter_private:
         return public_key_data
@@ -443,19 +468,41 @@ def authentication():
 # TODO#########################################################################
 
 
-def encrypt_message(file_name, message, list_modes):
+def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_enc_key, b_ver_key):
     message = message.encode('utf-8')
+    print(file_name)
+    print(message)
+    print(list_modes)
+    print(enc_ID)
+    print(ver_ID)
+    print(alg_num)
+    print(b_enc_key)
+    print(b_ver_key)
 
-    if list_modes[1]:
-        while True:
-            pass
+    # enc_key = serialization.load_pem_private_key(
+    #     b_enc_key,
+    #     password=None,
+    #     backend=default_backend()
+    # )
+    #
+    # ver_key = serialization.load_pem_public_key(
+    #     b_ver_key,
+    #     backend=default_backend()
+    # )
+
+    if list_modes[1]:  # authentication
+        H = hashlib.sha1(message)
 
     if list_modes[2]:  # zip
         message = zip_compress_data(message)
 
+    if list_modes[0]:  # privacy
+        pass
+
     if list_modes[3]:  # radix
         message = radix64_encode(message)
 
+    return
     with open(file_name, 'wb') as f:
         f.write(message)
 
@@ -474,4 +521,3 @@ def decrypt_message(file_name):
     PUBLIC_KEY = public_key_data[0][2]
 
     ENC_KS = file.read(PK_SIZE // 8)
-
