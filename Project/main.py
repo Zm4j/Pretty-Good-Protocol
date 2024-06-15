@@ -302,18 +302,20 @@ key_private = ""
 
 
 hex_plaintext = "0123456789ABCDEF"
-
 password_des = 'sadailnikada'
 password_hash_des = hashlib.sha1(password_des.encode('utf-8')).hexdigest()
 password_hash_des = password_hash_des[:32]
 print(password_hash_des)
+print(len(password_hash_des))
+print(len(hex_plaintext))
+
 
 print(f"Plaintext: {hex_plaintext}")
-ciphertext = DES_encryption(hex_plaintext, password_hash_des)
+ciphertext = TripleDES_encr(hex_plaintext, password_hash_des, password_hash_des)
 
 print(f"Ciphertext: {ciphertext}")
 
-plaintext = DES_decryption(ciphertext, password_hash_des)
+plaintext = TripleDES_decr(ciphertext, password_hash_des, password_hash_des)
 print(f"Plaintext: {plaintext}")
 
 """
