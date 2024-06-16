@@ -105,13 +105,17 @@ def zip_compress_data(data):
     return compressed_data
 
 
-def zip_decompress_data(data):
-    decompressed_data = zlib.decompress(data)
-    return decompressed_data
+def zip_decompress_data(compressed_data):
+    try:
+        decompressed_data = zlib.decompress(compressed_data)
+        return decompressed_data
+    except zlib.error as e:
+        print(f"Decompression error: {e}")
+        return None
 
 
 def AES128_encryption(message, key):
-    message += b'\x00' * 15  # padding
+    message += b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f'
 
     key_list = AES128_generate_keys(key[:16])  # get key for AES rounds
 
@@ -142,10 +146,9 @@ def AES128_encryption(message, key):
 
 def AES128_decryption(encrypted_message, key):
     key_list = AES128_generate_keys(key[:16])  # get key for AES rounds
-
     message = b""
     # doing iterations with blocks size 128 bits
-    for block_num in range(16, len(encrypted_message), 16):
+    for block_num in range(16, len(encrypted_message)+1, 16):
         block = np.array([encrypted_message[block_num - 16: block_num][i] for i in range(16)])
 
         # transform block in matrix by columns
@@ -163,15 +166,18 @@ def AES128_decryption(encrypted_message, key):
 
         for i in range(4):
             for j in range(4):
-                if block_num + 16 >= len(encrypted_message) and int(block[j][i]) == 0:
-                    continue
+                #if block_num + 16 >= len(encrypted_message) and int(block[j][i]) == 0:
+                    #continue
+                # OVO NE SME DA SOTJI GORE AL JBG, TREBA KORISNIK DA BRISE \x00 viskove
                 message += int(block[j][i]).to_bytes(1, byteorder='big')
 
     return message
 
 
 def DES_encryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
-    block = bitarray(from_hex_to_binary(block))
+    #print(block)
+    block = bytes_to_bitarray(block)
+
     key = bitarray(from_hex_to_binary(key))
 
     key = key[0:64]
@@ -192,15 +198,14 @@ def DES_encryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
     for i in return_value:
         ciphertext_string += str(i)
 
-    ciphertext_hex = hex(int(ciphertext_string, 2))[2:]
-    if len(ciphertext_hex) < 16:
-        append_value = "0"
-        ciphertext_hex = append_value + str(ciphertext_hex)
-    return ciphertext_hex
+    ciphertext_hex = int(ciphertext_string, 2)
+    ciphertext_hex = f"{ciphertext_hex:0{16}x}"
+
+    return bytes.fromhex(ciphertext_hex)
 
 
 def DES_decryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
-    block = bitarray(from_hex_to_binary(block))
+    block = bytes_to_bitarray(block)
     key = bitarray(from_hex_to_binary(key))
 
     key = key[0:64]
@@ -222,19 +227,48 @@ def DES_decryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
     for i in return_value:
         ciphertext_string += str(i)
 
-    ciphertext_hex = hex(int(ciphertext_string, 2))[2:]
-    if len(ciphertext_hex) < 16:
-        append_value = "0"
-        ciphertext_hex = append_value + str(ciphertext_hex)
-    return ciphertext_hex
+    ciphertext_hex = int(ciphertext_string, 2)
+    # if len(ciphertext_hex) < 16:
+    #     append_value = "0"
+    #     ciphertext_hex = append_value + str(ciphertext_hex)
+
+    ciphertext_hex = f"{ciphertext_hex:0{16}x}"
+    return bytes.fromhex(ciphertext_hex)
 
 
 def TripleDES_encr(message, s1, s2):
-    return DES_encryption(DES_decryption(DES_encryption(message, s1), s2), s1)
+    integer_value = int.from_bytes(s1, byteorder='big')
+    s1 = hex(integer_value)[2:]
+    integer_value = int.from_bytes(s2, byteorder='big')
+    s2 = hex(integer_value)[2:]
+
+    blocks = []
+    for i in range(0, len(message)+1, 8):
+        m = (message[i:i+8] + b'\x00\x00\x00\x00\x00\x00\x00\x00')[0:8]
+        blocks.append(m)
+
+    ciphertext = b""
+    for i in range(len(blocks)):
+        ciphertext += DES_encryption(DES_decryption(DES_encryption(blocks[i], s1), s2), s1)
+
+    return ciphertext
 
 
 def TripleDES_decr(message, s1, s2):
-    return DES_decryption(DES_encryption(DES_decryption(message, s1), s2), s1)
+    integer_value = int.from_bytes(s1, byteorder='big')
+    s1 = hex(integer_value)[2:]
+    integer_value = int.from_bytes(s2, byteorder='big')
+    s2 = hex(integer_value)[2:]
+
+    blocks_decr = []
+    for i in range(0, len(message)+1, 8):
+        blocks_decr.append(message[i:i + 8])
+
+    m = b""
+    for i in range(len(blocks_decr)):
+        m += DES_decryption(DES_encryption(DES_decryption(blocks_decr[i], s1), s2), s1)
+
+    return m
 
 
 # TODO########################################################################################
@@ -330,42 +364,29 @@ def authentication():
 
 def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_enc_key, b_ver_key):
     message = message.encode('utf-8')
-    """
-    print(file_name)
-    print(message)
-    print(list_modes)
-    print(enc_ID)
-    print(ver_ID)
-    print(alg_num)
-    print(b_enc_key)
-    print(b_ver_key)
-    """
     mode = [0, 0, 0, 0]
 
     if list_modes[1]:  # authentication
-        # H = hashlib.sha1(message)
-
         ver_key = serialization.load_pem_private_key(
             b_ver_key,
             password=None,
             backend=default_backend()
         )
-
         # sifrujemo koriscenjuem RSA alg
+
         signature = rsa_sign_message(message, ver_key)
-
         concatenatedmsg = ver_ID.encode('utf-8') + signature + message
-
         message = concatenatedmsg
+
         mode[1] = 1
-        print("Message after authentication: ", message)
 
     if list_modes[2]:  # zip
         message = zip_compress_data(message)
         mode[2] = 1
-        print("Message after zip: ", message)
 
     if list_modes[0]:  # privacy
+        message = (255).to_bytes(1, 'big') + len(message).to_bytes(4, 'big') + message
+
 
         enc_key = serialization.load_pem_public_key(
             b_enc_key,
@@ -374,46 +395,13 @@ def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_e
         #proveravamo koji je od algoritama izabran
         if alg_num == 0:
             # 3DES
-            session_key1 = secrets.token_bytes(128)
-            integer_value = int.from_bytes(session_key1, byteorder='big')
-            session_key1 = hex(integer_value)[2:]
-            session_key1 = session_key1[0:32]
-            #print("Session Key 1:", session_key1)
+            session_key1 = secrets.token_bytes(16)
+            session_key2 = secrets.token_bytes(16)
 
-            session_key2 = secrets.token_bytes(128)
-            integer_value = int.from_bytes(session_key2, byteorder='big')
-            session_key2 = hex(integer_value)[2:]
-            session_key2 = session_key2[0:32]
-            #print("Session Key 2:", session_key2)
+            ciphertext = TripleDES_encr(message, session_key1, session_key2)
 
-            integer_value = int.from_bytes(message, byteorder='big')
-            message = str(hex(integer_value)[2:])
-
-            blocks = []
-            for i in range(0, len(message), 16):
-                blocks.append(message[i:i + 16])
-
-            ciphertext = ""
-            #print(blocks)
-            for i in range(len(blocks)):
-                ciphertext += TripleDES_encr(blocks[i], session_key1, session_key2)
-
-            """
-            blocks_decr = []
-            for i in range(0, len(c), 16):
-                blocks_decr.append(c[i:i+16])
-
-            m = ""
-            for i in range(len(blocks_decr)):
-                m += TripleDES_decr(blocks_decr[i], session_key1, session_key2)
-            print(m)
-            """
-            # enkripcija sesijskog kljuca
-
-            ciphertext = bytes.fromhex(ciphertext)
-
-            encrypted_sk1 = rsa_encrypt_message(bytes.fromhex(session_key1), enc_key)
-            encrypted_sk2 = rsa_encrypt_message(bytes.fromhex(session_key2), enc_key)
+            encrypted_sk1 = rsa_encrypt_message(session_key1, enc_key)
+            encrypted_sk2 = rsa_encrypt_message(session_key2, enc_key)
 
             ciphertext = b'\x00' + enc_ID.encode('utf-8') + encrypted_sk1 + encrypted_sk2 + ciphertext
 
@@ -421,25 +409,23 @@ def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_e
 
         else:
             # AES128
-            session_key1 = secrets.token_bytes(128)
-            session_key1 = session_key1[0:16]
+            session_key1 = secrets.token_bytes(16)
 
             ciphertext = AES128_encryption(message, session_key1)
 
             encrypted_sk1 = rsa_encrypt_message(session_key1, enc_key)
-            print("AES session key: ", encrypted_sk1)
-            # print(len(encrypted_sk1))
+
             ciphertext = b'\x01' + enc_ID.encode('utf-8') + encrypted_sk1 + ciphertext
 
             message = ciphertext
 
         mode[0] = 1
-        print("Message after privacy: ", message)
+        #print("Message after privacy: ", message)
 
     if list_modes[3]:  # radix
         message = radix64_encode(message)
         mode[3] = 1
-        print("Message after radix: ", message)
+        #print("Message after radix: ", message)
 
     str_mode = ""
     for i in mode:
@@ -451,71 +437,63 @@ def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_e
 
 
 def decrypt_message(file_name, password):
-    """
-    print(file_name)
     file = open(file_name, "rb")
-    file_stat = os.stat(file_name)
-
-    PK_ID = file.read(8).decode('utf8')
-    print(PK_ID)
-    public_key_data = get_keys_from_files("./Keys", filter_id=PK_ID)
-    print(public_key_data[0])
-    PK_SIZE = int(public_key_data[0][3])
-
-    PUBLIC_KEY = public_key_data[0][2]
-
-    ENC_KS = file.read(PK_SIZE // 8)
-    """
-    file = open(file_name, "rb")
-
     file_content = file.read()
-
     mode = file_content[:4].decode('utf-8')
 
     message = file_content[4:]
-    print(type(mode))
-    # print(mode)
-    # print(message)
-    print("Message before radix: ", message)
-    if mode[3]:  # radix
+    if mode[3] == '1':  # radix
         message = radix64_decode(message)
-        print("Message before privacy : ", message)
 
-    if mode[0]:  # privacy
+    if mode[0] == '1':  # privacy
         code = message[0]
-        print(code)
-        if code == 0:
-            # 3DES
-            pass
-        elif code == 1:
-            # AES128
-            enc_ID = message[1:9]
+        enc_ID = message[1:9]
+        enc_key = get_keys_from_files("./Keys", filter_id=enc_ID, filter_private=True)
+        private_key_enc = enc_key[0][3][len("-----BEGIN RSA PRIVATE KEY-----\n"):-len("-----END RSA PRIVATE KEY-----\n")]
+        password = hashlib.sha1(password.encode('utf-8')).hexdigest()
+        private_key = AES128_decryption(private_key_enc, bytes.fromhex(password)[:16])
+        private_key = serialization.load_pem_private_key(
+            private_key,
+            password=None,
+            backend=default_backend()
+        )
+
+        if code == 0:  # 3DES
             session_key1_enc = message[9:137]
-            print(enc_ID)
-            print(session_key1_enc)
+            session_key2_enc = message[137:265]
 
-            enc_key = get_keys_from_files("./Keys", filter_id=enc_ID, filter_private=True)
-            print()
-            private_key_enc = enc_key[0][3][
-                          len("-----BEGIN RSA PRIVATE KEY-----\n"):-len("\n-----END RSA PRIVATE KEY-----\n")]
-            print(private_key_enc)
-
-            password = hashlib.sha1(password.encode('utf-8')).hexdigest()
-            private_key_enc = AES128_decryption(private_key_enc, bytes.fromhex(password)[:16])
-            print(private_key_enc)
-            # encrypted_sk1 = rsa_encrypt_message(session_key1, enc_key)
-
-            private_key = serialization.load_pem_private_key(
-                private_key_enc,
-                password=None,
-                backend=default_backend()
-            )
             session_key1_decr = rsa_decrypt_message(session_key1_enc, private_key)
+            session_key2_decr = rsa_decrypt_message(session_key2_enc, private_key)
+            message = TripleDES_decr(message[265:], session_key1_decr, session_key2_decr)
 
-            print(session_key1_decr)
+        elif code == 1:  # AES128
+            session_key1_enc = message[9:137]
 
-    if mode[2]:  # zip
-        pass
+            session_key1_decr = rsa_decrypt_message(session_key1_enc, private_key)
+            message = AES128_decryption(message[137:], session_key1_decr)
 
-    if mode[1]:  # authentication
-        pass
+        message = message[1:]
+        mes_size = int.from_bytes(message[:4], 'big') + 4
+        message = message[4:mes_size]
+
+    if mode[2] == '1':  # zip
+        message = zip_decompress_data(message)
+
+    if mode[1] == '1':  # authentication
+        ver_ID = message[0:8]
+        ver_key = get_keys_from_files("./Keys", filter_id=ver_ID,)
+        ver_key = ver_key[0][2]
+
+        ver_key = serialization.load_pem_public_key(
+            ver_key,
+            backend=default_backend()
+        )
+
+        signature = message[8:136]
+        message = message[136:]
+        if rsa_verify_signature(message, signature, ver_key):
+            print("MESSAGE IS VERIFIED")
+        else:
+            print("MESSAGE GOT CORRUPTED")
+
+    print(message)

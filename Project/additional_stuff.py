@@ -320,3 +320,11 @@ def from_hex_to_binary(hex):
     integer_value = int(hex, 16)
     binary_str = bin(integer_value)[2:]
     return binary_str.zfill(len(hex) * 4)
+
+
+def bytes_to_bitarray(byte_data):
+    bit_arr = bitarray()
+    for byte in byte_data:
+        binary_representation = bin(byte)[2:].zfill(8)
+        bit_arr.extend(binary_representation)
+    return bit_arr
