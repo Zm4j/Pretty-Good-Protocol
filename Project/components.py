@@ -112,7 +112,6 @@ class Button:
                 self.callback()
 
     def update(self, mouse_pos):
-        pass
         if self.rect.collidepoint(mouse_pos):
             self.color = self.hover_color
         else:

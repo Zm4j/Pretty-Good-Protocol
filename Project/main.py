@@ -27,6 +27,7 @@ def delete_key(file_index):
 
 
 def handle_events(components, radio_group=[]):
+    mouse_pos = pygame.mouse.get_pos()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -35,6 +36,8 @@ def handle_events(components, radio_group=[]):
             if isinstance(component, RadioButton):
                 component.handle_event(event, radio_group)
             else:
+                if isinstance(component, Button):
+                    component.update(mouse_pos)
                 component.handle_event(event)
 
 
@@ -43,9 +46,12 @@ def draw_components(color, components):
     for component in components:
         component.draw(main_screen)
 
+    """
     mouse_pos = pygame.mouse.get_pos()
     for component in components:
         component.update(mouse_pos)
+    """
+    pygame.display.flip()
 
 
 def main():
@@ -358,13 +364,13 @@ plaintext = DES_encryption(ciphertext_binary, key[::-1])
 
 fn = "output.bin"
 m = b'Mnogo sam zena pozeleo\r\nSamo sam tebe sanjao\r\nSvakog te dana cekao\r\nVoleo\r\n\r\nPo meri tvojoj, po grudima\r\nMoja je saka stvorena\r\nNa telu tvom\r\nDa zadremam\r\nMoja je ruka navikla\r\nKad bi htela sada\r\nKad bi se setila\r\nDa te na istom mestu\r\nCekam ja'.decode('utf8')
-lm = [True, True, False, True]
+lm = [True, True, True, True]
 k1ID = 'XQIDAQAB'
 k2ID = 'XQIDAQAB'
-an = 0
+an = 1
 k1 = b'-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDOMyqEZEhtD1iYopUIa1suCsGx\nnH+MtmCewRlX1hP/B5TOZ6thXDnGJY+pqNhQFwSHekIQaVnDmbXiwGepOmDN3y5Q\ny6JXU7+028lh84j2ABZN3RPmYDgSTEv+47IGJ5GKRMyU/TjOEj5WCl7hSraWA13G\nRNHszpQSTXo1IzmvXQIDAQAB\n-----END PUBLIC KEY-----\n'
 k2 = b'-----BEGIN RSA PRIVATE KEY-----\nMIICXQIBAAKBgQDOMyqEZEhtD1iYopUIa1suCsGxnH+MtmCewRlX1hP/B5TOZ6th\nXDnGJY+pqNhQFwSHekIQaVnDmbXiwGepOmDN3y5Qy6JXU7+028lh84j2ABZN3RPm\nYDgSTEv+47IGJ5GKRMyU/TjOEj5WCl7hSraWA13GRNHszpQSTXo1IzmvXQIDAQAB\nAoGAU/2leO38Tmgs12eKOza3mkaJZVZw4hk7vA69yviJhp1I8NZrianuYpbUMPB0\nxBLMJn8XP+YZyUHoQ6fJ0bXUzetgptoEXCYJrbSZsLWF0UNvvXe4zTdENngUUE47\nTY8GaKlv+1BKjHNoH0sDx8eJalVvZJXdedWLxKsBDit2rGUCQQD1dPwXj0Xqag18\n6z7vE6QeazKB+zbC4O0ufUr+qzc5vSBE5OYxwo3EGGBwzksGdAa1dwJe5DVD8L3f\nTC3n1TYTAkEA1w6D1LdXAq/ZMlG6uebsPJbfjxb9O+ADZ8t++3/QhwIS+7Bcjz0+\nA4PO4m1uxdN4//VDy4SFBbBNgjwYRxfyzwJAGZ8phWgOO0bwu35u5lPdiNNVxV2s\nvLDv8S9g+a5zqFJGoQpnwP/2/mYxAvV1vWm1HZIbrD4UFVB28W0pSY7nAwJBAIr/\nx7eaVLPY4uKCLtVvaytyPMbojf7AOJNC1S1LHIXWklx5TioK5GUzMWnqX1mf6KpP\nZWVKnwvhOwe9Pdfdo8MCQQCMA/3lS9rpLGRXfh0AMeGKXRRMDoXm64WjH8wwIOZm\nnKH9diGxxd9n9e7M4YZMWiDb1TOw2D/5YaQUsSIzg3VV\n-----END RSA PRIVATE KEY-----\n'
 
 encrypt_message(fn, m, lm, k1ID, k2ID, an, k1, k2)
-
+decrypt_message(fn, "123456")
 main()

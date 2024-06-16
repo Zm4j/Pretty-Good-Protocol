@@ -61,7 +61,7 @@ def rsa_sign_message(message, private_key):
             mgf=padding.MGF1(hashes.SHA256()),
             salt_length=padding.PSS.MAX_LENGTH
         ),
-        hashes.SHA256()
+        hashes.SHA1()
     )
     return signature
 
@@ -75,7 +75,7 @@ def rsa_verify_signature(message, signature, public_key):
                 mgf=padding.MGF1(hashes.SHA256()),
                 salt_length=padding.PSS.MAX_LENGTH
             ),
-            hashes.SHA256()
+            hashes.SHA1()
         )
         return True
     except Exception as e:
@@ -91,13 +91,12 @@ def radix64_add_pgp_headers(encoded_data):
 
 def radix64_encode(data):
     encoded_data = base64.b64encode(data)
-    pgp_message = radix64_add_pgp_headers(encoded_data)
-    return pgp_message
+    return encoded_data
 
 
 def radix64_decode(encoded_data):
     decoded_data = base64.b64decode(
-        encoded_data[len("-----BEGIN PGP MESSAGE-----\n"):-len("\n-----END PGP MESSAGE-----")])
+        encoded_data)
     return decoded_data
 
 
@@ -331,6 +330,7 @@ def authentication():
 
 def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_enc_key, b_ver_key):
     message = message.encode('utf-8')
+    """
     print(file_name)
     print(message)
     print(list_modes)
@@ -339,35 +339,38 @@ def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_e
     print(alg_num)
     print(b_enc_key)
     print(b_ver_key)
-
-    # enc_key = serialization.load_pem_public_key(
-    #     b_enc_key,
-    #     password=None,
-    #     backend=default_backend()
-    # )
-    #
-    ver_key = serialization.load_pem_private_key(
-        b_ver_key,
-        password=None,
-        backend=default_backend()
-    )
+    """
+    mode = [0, 0, 0, 0]
 
     if list_modes[1]:  # authentication
-        H = hashlib.sha1(message)
+        # H = hashlib.sha1(message)
+
+        ver_key = serialization.load_pem_private_key(
+            b_ver_key,
+            password=None,
+            backend=default_backend()
+        )
 
         # sifrujemo koriscenjuem RSA alg
         signature = rsa_sign_message(message, ver_key)
 
-        print(signature)
-        concatenatedmsg = message + signature
+        concatenatedmsg = ver_ID.encode('utf-8') + signature + message
 
         message = concatenatedmsg
-        #print(concatenatedmsg)
+        mode[1] = 1
+        print("Message after authentication: ", message)
 
     if list_modes[2]:  # zip
         message = zip_compress_data(message)
+        mode[2] = 1
+        print("Message after zip: ", message)
 
     if list_modes[0]:  # privacy
+
+        enc_key = serialization.load_pem_public_key(
+            b_enc_key,
+            backend=default_backend()
+        )
         #proveravamo koji je od algoritama izabran
         if alg_num == 0:
             # 3DES
@@ -375,33 +378,27 @@ def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_e
             integer_value = int.from_bytes(session_key1, byteorder='big')
             session_key1 = hex(integer_value)[2:]
             session_key1 = session_key1[0:32]
-            print("Session Key 1:", session_key1)
+            #print("Session Key 1:", session_key1)
 
             session_key2 = secrets.token_bytes(128)
             integer_value = int.from_bytes(session_key2, byteorder='big')
             session_key2 = hex(integer_value)[2:]
             session_key2 = session_key2[0:32]
-            print("Session Key 2:", session_key2)
+            #print("Session Key 2:", session_key2)
 
             integer_value = int.from_bytes(message, byteorder='big')
             message = str(hex(integer_value)[2:])
-            print(message)
-
-            """
-            c = TripleDES_encr(message, session_key1, session_key2)
-            m = TripleDES_decr(c, session_key1, session_key2)
-            print(m)
-            """
 
             blocks = []
             for i in range(0, len(message), 16):
-                blocks.append(message[i:i+16])
+                blocks.append(message[i:i + 16])
 
-            c = ""
+            ciphertext = ""
             #print(blocks)
             for i in range(len(blocks)):
-                c += TripleDES_encr(blocks[i], session_key1, session_key2)
+                ciphertext += TripleDES_encr(blocks[i], session_key1, session_key2)
 
+            """
             blocks_decr = []
             for i in range(0, len(c), 16):
                 blocks_decr.append(c[i:i+16])
@@ -410,25 +407,51 @@ def encrypt_message(file_name, message, list_modes, enc_ID, ver_ID, alg_num, b_e
             for i in range(len(blocks_decr)):
                 m += TripleDES_decr(blocks_decr[i], session_key1, session_key2)
             print(m)
-
+            """
             # enkripcija sesijskog kljuca
 
+            ciphertext = bytes.fromhex(ciphertext)
 
+            encrypted_sk1 = rsa_encrypt_message(bytes.fromhex(session_key1), enc_key)
+            encrypted_sk2 = rsa_encrypt_message(bytes.fromhex(session_key2), enc_key)
+
+            ciphertext = b'\x00' + enc_ID.encode('utf-8') + encrypted_sk1 + encrypted_sk2 + ciphertext
+
+            message = ciphertext
 
         else:
-            #AES128
-            pass
+            # AES128
+            session_key1 = secrets.token_bytes(128)
+            session_key1 = session_key1[0:16]
+
+            ciphertext = AES128_encryption(message, session_key1)
+
+            encrypted_sk1 = rsa_encrypt_message(session_key1, enc_key)
+            print("AES session key: ", encrypted_sk1)
+            # print(len(encrypted_sk1))
+            ciphertext = b'\x01' + enc_ID.encode('utf-8') + encrypted_sk1 + ciphertext
+
+            message = ciphertext
+
+        mode[0] = 1
+        print("Message after privacy: ", message)
 
     if list_modes[3]:  # radix
-        #message = radix64_encode(message)
-        pass
+        message = radix64_encode(message)
+        mode[3] = 1
+        print("Message after radix: ", message)
 
-    return
+    str_mode = ""
+    for i in mode:
+        str_mode += str(i)
+
+    message = str_mode.encode('utf-8') + message
     with open(file_name, 'wb') as f:
         f.write(message)
 
 
-def decrypt_message(file_name):
+def decrypt_message(file_name, password):
+    """
     print(file_name)
     file = open(file_name, "rb")
     file_stat = os.stat(file_name)
@@ -442,3 +465,57 @@ def decrypt_message(file_name):
     PUBLIC_KEY = public_key_data[0][2]
 
     ENC_KS = file.read(PK_SIZE // 8)
+    """
+    file = open(file_name, "rb")
+
+    file_content = file.read()
+
+    mode = file_content[:4].decode('utf-8')
+
+    message = file_content[4:]
+    print(type(mode))
+    # print(mode)
+    # print(message)
+    print("Message before radix: ", message)
+    if mode[3]:  # radix
+        message = radix64_decode(message)
+        print("Message before privacy : ", message)
+
+    if mode[0]:  # privacy
+        code = message[0]
+        print(code)
+        if code == 0:
+            # 3DES
+            pass
+        elif code == 1:
+            # AES128
+            enc_ID = message[1:9]
+            session_key1_enc = message[9:137]
+            print(enc_ID)
+            print(session_key1_enc)
+
+            enc_key = get_keys_from_files("./Keys", filter_id=enc_ID, filter_private=True)
+            print()
+            private_key_enc = enc_key[0][3][
+                          len("-----BEGIN RSA PRIVATE KEY-----\n"):-len("\n-----END RSA PRIVATE KEY-----\n")]
+            print(private_key_enc)
+
+            password = hashlib.sha1(password.encode('utf-8')).hexdigest()
+            private_key_enc = AES128_decryption(private_key_enc, bytes.fromhex(password)[:16])
+            print(private_key_enc)
+            # encrypted_sk1 = rsa_encrypt_message(session_key1, enc_key)
+
+            private_key = serialization.load_pem_private_key(
+                private_key_enc,
+                password=None,
+                backend=default_backend()
+            )
+            session_key1_decr = rsa_decrypt_message(session_key1_enc, private_key)
+
+            print(session_key1_decr)
+
+    if mode[2]:  # zip
+        pass
+
+    if mode[1]:  # authentication
+        pass
