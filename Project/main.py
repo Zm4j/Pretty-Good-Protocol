@@ -79,6 +79,9 @@ def main():
     G4_radio_buttons = [RadioButton(50, 115 + i*20, "") for i in range(30)]
     G4_password = TextBox(WIDTH - 200 - BUTTON_WIDTH, HEIGHT-100, 350, 42)
 
+    G5_file_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 42)
+    G5_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 42)
+
     while True:
         if SCREEN_MOD == MOD.DEFAULT:
             # TODO brisi sve promenljive, to treba umesto ind=1
@@ -94,6 +97,7 @@ def main():
             handle_events(components)
 
             if G1_name.getText() != '' and G1_email.getText() != '' and (G1_radio_bits[0].is_selected() or G1_radio_bits[1].is_selected()) and G1_password.getText() != '':
+                GENERATE_KEY_VALUES = []
                 GENERATE_KEY_VALUES.append(G1_name.getText())
                 GENERATE_KEY_VALUES.append(G1_email.getText())
                 GENERATE_KEY_VALUES.append(G1_radio_bits[0].text if G1_radio_bits[0].is_selected() else G1_radio_bits[1].text)
@@ -133,7 +137,7 @@ def main():
             components.append(G1_password)
             components += G1_radio_bits
 
-            draw_components(YELLOW, components)
+            draw_components(WHITE, components)
             handle_events(components, G1_radio_bits)
 
         elif SCREEN_MOD == MOD.ENCRYPT:
@@ -161,13 +165,19 @@ def main():
             if ((G2_encryption_keyID != "" and (G2_select_alg[0].is_selected() or G2_select_alg[1].is_selected())) or not G2_checkboxes[0].isChecked()) and (G2_verify_keyID!="" or not G2_checkboxes[1].isChecked()):
                 components.append(Button((WIDTH - BUTTON_WIDTH) // 2, HEIGHT - 150, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",lambda: encrypt_message(G2_file_name.getText(), G2_massage.getText(), list_modes, G2_encryption_keyID, G2_verify_keyID, 0 if G2_select_alg[0].is_selected() else 1, G2_encryption_key, G2_verify_key)))
 
-            draw_components(LIGHT_BLUE, components)
+            draw_components(WHITE, components)
             handle_events(components, G2_select_alg)
 
         elif SCREEN_MOD == MOD.DECRYPT:
             components = [return_button]
-            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Decript",lambda: decrypt_message('output.bin')))
-            draw_components(PURPLE, components)
+
+            components.append(Label("File name : ", 100, 60))
+            components.append(G5_file_name)
+            components.append(Label("Password : ", 100, 160))
+            components.append(G5_password)
+
+            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT) // 3, BUTTON_WIDTH, BUTTON_HEIGHT, "Decript",lambda: decrypt_message(G5_file_name.getText(), G5_password.getText())))
+            draw_components(WHITE, components)
             handle_events(components)
 
         elif SCREEN_MOD == MOD.KEY_TABLE_VIEW:
@@ -175,8 +185,8 @@ def main():
             if filter_id == "see_all_keys":
                 filter_id = None
 
-            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id)
-            public_key_data = get_keys_from_files("./Keys", filter_user=filter_id)
+            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id.encode('utf-8') if filter_id != None else None)
+            public_key_data = get_keys_from_files("./Keys", filter_user=filter_id.encode('utf-8') if filter_id != None else None)
 
             components = [return_button, G4_user_id]
             components.append(Label("E-mail", 70, HEIGHT - 140))
@@ -234,7 +244,7 @@ def main():
             components.append(Label("E-mail", 70, HEIGHT-140))
             components.append(Button(0, 0, BUTTON_WIDTH // 2, BUTTON_HEIGHT // 2, "return", lambda: set_screen_mod(MOD.ENCRYPT)))
 
-            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id)
+            private_key_data = get_keys_from_files("./Keys", filter_private=True, filter_user=filter_id.encode('utf-8'))
             components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
 
             private_key_data_decoded = []
@@ -280,7 +290,7 @@ def main():
             components.append(Label("E-mail", 70, HEIGHT-140))
             components.append(Button(0, 0, BUTTON_WIDTH // 2, BUTTON_HEIGHT // 2, "return", lambda: set_screen_mod(MOD.ENCRYPT)))
 
-            public_key_data = get_keys_from_files("./Keys", filter_user=filter_id)
+            public_key_data = get_keys_from_files("./Keys", filter_user=filter_id.encode('utf-8'))
             components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, 40))
 
             public_key_data_decoded = []
@@ -312,17 +322,6 @@ def main():
             components += radio_buttons_temp
             draw_components(WHITE, components)
             handle_events(components, G4_radio_buttons)
-
-        elif SCREEN_MOD == MOD.TEST:
-            components = [return_button]
-            components += G4_radio_buttons
-            draw_components(WHITE, components)
-            handle_events(components, G4_radio_buttons)
-
-        else:
-            components = [return_button]
-            draw_components(GREEN, components)
-            handle_events(components)
 
         pygame.display.flip()
         clock.tick(30)
@@ -360,7 +359,7 @@ print(ciphertext_binary)
 plaintext = DES_encryption(ciphertext_binary, key[::-1])
 """
 
-# fn = "output.bin"
+fn = "output.bin"
 # m = b'Mnogo sam zena pozeleo\r\nSamo sam tebe sanjao\r\nSvakog te dana cekao\r\nVoleo\r\n\r\nPo meri tvojoj, po grudima\r\nMoja je saka stvorena\r\nNa telu tvom\r\nDa zadremam\r\nMoja je ruka navikla\r\nKad bi htela sada\r\nKad bi se setila\r\nDa te na istom mestu\r\nCekam ja'.decode('utf8')
 # lm = [True, True, False, True]
 # k1ID = 'XQIDAQAB'
@@ -371,7 +370,7 @@ plaintext = DES_encryption(ciphertext_binary, key[::-1])
 #
 # print("-----------------------------")
 # encrypt_message(fn, m, lm, k1ID, k2ID, an, k1, k2)
-# decrypt_message(fn, "123456")
+#decrypt_message(fn, "123")
 
 
 main()
