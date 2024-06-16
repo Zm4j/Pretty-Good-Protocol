@@ -19,6 +19,7 @@ BUTTON_WIDTH, BUTTON_HEIGHT = 200, 50
 TEXTBOX_WIDTH, TEXTBOX_HEIGHT = 500, 50
 
 WHITE = (255, 255, 255)
+DARK_GRAY = (100, 100, 100)
 GRAY = (180, 180, 180)
 LIGHT_GRAY = (220, 220, 220)
 BLACK = (0, 0, 0)
@@ -35,10 +36,14 @@ SCREEN_MOD = MOD.DEFAULT
 class TextBox:
     def __init__(self, x, y, w, h):
         self.width = w
+        self.height = h
         self.rect = pygame.Rect(x, y, w, h)
         self.text = ""
         self.active = False
         self.font = pygame.font.SysFont('Consolas', 18)
+        self.h_text_position = 0
+        self.width_text = self.width * 179 // 1800
+        self.num_lines = (self.height-2 + 19) // 20
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -57,22 +62,33 @@ class TextBox:
                     self.text += clipboard_text
             elif event.key == pygame.K_DELETE and (
                     pygame.key.get_mods() & pygame.KMOD_CTRL or pygame.key.get_mods() & pygame.KMOD_META):
-                # Ctrl + Delete to clear the textbox
                 self.text = ""
+            elif event.key == pygame.K_DOWN:
+                self.h_text_position = max(0, self.h_text_position-1)
+            elif event.key == pygame.K_UP:
+                if (len(self.text)+self.width_text-1)//self.width_text - self.num_lines - self.h_text_position <= 0:
+                    pass
+                else:
+                    self.h_text_position += 1
             else:
                 self.text += event.unicode
+
+    def update(self, mouse_pos):
+        pass
 
     def draw(self, screen):
         font = self.font
         outline_color = BLACK if self.active else GRAY
         pygame.draw.rect(screen, outline_color, self.rect, 2)
         pygame.draw.rect(screen, WHITE, self.rect.inflate(-4, -4))
-        i = 0
-        width = self.width * 179 // 1800
-        while i < len(self.text):
-            text_surface = font.render(self.text[i:i+width], True, BLACK)
-            screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5 + 17*(i//width)))
-            i += width
+        i = max(0, (len(self.text)+self.width_text-1)//self.width_text - self.num_lines - self.h_text_position) * self.width_text
+        i_end = i + self.num_lines * self.width_text
+        j = 0
+        while i < i_end:
+            text_surface = font.render(self.text[i:i+self.width_text], True, BLACK)
+            screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5 + 17*(j//self.width_text)))
+            j += self.width_text
+            i += self.width_text
 
     def getText(self):
         return self.text
@@ -86,18 +102,28 @@ class Button:
         self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.callback = callback
+        self.default_color = GRAY
+        self.hover_color = LIGHT_GRAY
+        self.color = self.default_color
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos):
                 self.callback()
 
+    def update(self, mouse_pos):
+        pass
+        if self.rect.collidepoint(mouse_pos):
+            self.color = self.hover_color
+        else:
+            self.color = self.default_color
+
     def getName(self):
         return self.text
 
     def draw(self, screen):
         font = pygame.font.Font(None, 25)
-        pygame.draw.rect(screen, GRAY, self.rect)
+        pygame.draw.rect(screen, self.color, self.rect)
         text_surface = font.render(self.text, True, BLACK)
         text_rect = text_surface.get_rect(center=self.rect.center)
         screen.blit(text_surface, text_rect)
@@ -114,6 +140,9 @@ class CheckBox:
             if self.rect.collidepoint(event.pos):
                 self.checked = not self.checked
 
+    def update(self, mouse_pos):
+        pass
+
     def draw(self, screen):
         font = pygame.font.Font(None, 25)
         pygame.draw.rect(screen, BLACK, self.rect, 2)
@@ -127,6 +156,7 @@ class CheckBox:
 
     def set_value(self, value):
         self.checked = value
+
 
 class Table:
     def __init__(self, x, y, column_names, data, column_width=None):
@@ -144,6 +174,9 @@ class Table:
         self.cell_padding = 5
 
     def handle_event(self, event):
+        pass
+
+    def update(self, mouse_pos):
         pass
 
     def draw(self, screen):
@@ -182,6 +215,9 @@ class Label:
         self.font = pygame.font.Font(None, font_size)
         self.font_color = font_color
 
+    def update(self, mouse_pos):
+        pass
+
     def handle_event(self, event):
         pass
 
@@ -213,6 +249,9 @@ class RadioButton:
         # Draw the text
         text_surface = self.font.render(self.text, True, self.font_color)
         screen.blit(text_surface, (self.x + self.radius + 10, self.y - text_surface.get_height() // 2))
+
+    def update(self, mouse_pos):
+        pass
 
     def is_clicked(self, mouse_pos):
         # Check if the radio button is clicked

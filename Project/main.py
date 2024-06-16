@@ -43,6 +43,10 @@ def draw_components(color, components):
     for component in components:
         component.draw(main_screen)
 
+    mouse_pos = pygame.mouse.get_pos()
+    for component in components:
+        component.update(mouse_pos)
+
 
 def main():
     clock = pygame.time.Clock()
