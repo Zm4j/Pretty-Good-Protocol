@@ -1,10 +1,4 @@
 import sys
-
-import gmpy2 as gmpy2
-import pygame as pygame
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-
 from components import *
 from algorithms import *
 
@@ -21,6 +15,15 @@ def set_screen_mod(x):
 
 def clearscreen():
     main_screen.fill(WHITE)
+
+
+def delete_key(file_index):
+    files = glob.glob(os.path.join("./Keys", '*'))
+    for index, file_path in enumerate(files):
+        if index != file_index:
+            continue
+        if os.path.isfile(file_path):
+            os.remove(file_path)
 
 
 def handle_events(components, radio_group=[]):
@@ -46,25 +49,25 @@ def main():
     return_button = Button(0, 0, BUTTON_WIDTH // 2, BUTTON_HEIGHT // 2, "return", lambda: set_screen_mod(MOD.DEFAULT))
 
     # components for generate mod
-    G1_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 50)
-    G1_email = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 50)
+    G1_name = TextBox((WIDTH - BUTTON_WIDTH) // 2, 50, 350, 42)
+    G1_email = TextBox((WIDTH - BUTTON_WIDTH) // 2, 150, 350, 42)
     G1_radio_bits = [RadioButton((WIDTH - BUTTON_WIDTH) // 2 + 10, 275, "1024"),
                      RadioButton((WIDTH - BUTTON_WIDTH) // 2 + 110, 275, "2048")]
-    G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 50)
+    G1_password = TextBox((WIDTH - BUTTON_WIDTH) // 2, 350, 350, 42)
 
-    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2-350, 50, 1050, 90)
-    G2_file_name = TextBox((WIDTH - BUTTON_WIDTH) // 2-350, 150, 350, 50)
-    G2_checkboxes = [CheckBox(200, 300 + i*80, 20, ["TAJNOST", "AUTENTIKACIJA", "KOMPRESIJA", "RADIX64"][i]) for i in range(4)]
-    G2_encription_keyID = ""
+    G2_massage = TextBox((WIDTH - BUTTON_WIDTH) // 2-350, 50, 1050, 95)
+    G2_file_name = TextBox((WIDTH - BUTTON_WIDTH) // 2-350, 150, 350, 42)
+    G2_checkboxes = [CheckBox(200, 300 + i*80, 20, ["PRIVACY", "VERIFICATION", "ZIP", "RADIX64"][i]) for i in range(4)]
+    G2_encryption_keyID = ""
     G2_verify_keyID = ""
     G2_encryption_key = b""
     G2_verify_key = b""
     G2_select_alg = [RadioButton(WIDTH - 450, 290, "TripleDES"),
                      RadioButton(WIDTH - 450, 330, "AES128")]
 
-    G4_user_id = TextBox(50, HEIGHT-100, 350, 50)
+    G4_user_id = TextBox(50, HEIGHT-100, 350, 42)
     G4_radio_buttons = [RadioButton(50, 115 + i*20, "") for i in range(30)]
-    G4_password = TextBox(WIDTH - 200 - BUTTON_WIDTH, HEIGHT-100, 350, 50)
+    G4_password = TextBox(WIDTH - 200 - BUTTON_WIDTH, HEIGHT-100, 350, 42)
 
     while True:
         if SCREEN_MOD == MOD.DEFAULT:
@@ -87,11 +90,25 @@ def main():
                 GENERATE_KEY_VALUES.append(G1_password.getText())
                 generate_keys(GENERATE_KEY_VALUES)
 
-
             G1_name.setText("")
             G1_password.setText("")
             G1_radio_bits[0].clear()
             G1_email.setText("")
+            G2_massage.setText("")
+            G2_file_name.setText("")
+            for cb in G2_checkboxes:
+                cb.set_value(False)
+            G2_select_alg[0].clear()
+            G2_select_alg[1].clear()
+            G2_encryption_keyID = ""
+            G2_verify_keyID = ""
+            G2_encryption_key = b""
+            G2_verify_key = b""
+            G4_user_id.setText("")
+            G4_password.setText("")
+            G4_user_id.setText("")
+            for i in G4_radio_buttons:
+                i.clear()
 
         elif SCREEN_MOD == MOD.GENERATE:
             # TODO MOD treba da se menja !!!
@@ -125,15 +142,14 @@ def main():
             if G2_checkboxes[0].isChecked():  # ENCRYPTION
                 components += G2_select_alg
                 components.append(Button(500, 285, BUTTON_WIDTH, BUTTON_HEIGHT, "SELECT KEY", lambda: set_screen_mod(MOD.SELECT_KEY_E)))
-                components.append(Label("not selected" if G2_encription_keyID == "" else "selected  " + G2_encription_keyID, 750, 300))
+                components.append(Label("not selected" if G2_encryption_keyID == "" else "selected  " + G2_encryption_keyID, 750, 300))
 
             if G2_checkboxes[1].isChecked():  # VERIFICATION
                 components.append(Button(500, 365, BUTTON_WIDTH, BUTTON_HEIGHT, "SELECT KEY", lambda: set_screen_mod(MOD.SELECT_KEY_V)))
                 components.append(Label("not selected" if G2_verify_keyID == "" else "selected  " + G2_verify_keyID, 750, 380))
 
-            #if not((G2_checkboxes[0].isChecked() and G2_encription_keyID == "") and (G2_checkboxes[1].isChecked() and G2_encription_keyID == "")):
-            if ((G2_encription_keyID!="" and (G2_select_alg[0].is_selected() or G2_select_alg[1].is_selected())) or not G2_checkboxes[0].isChecked()) and (G2_verify_keyID!="" or not G2_checkboxes[1].isChecked()):
-                components.append(Button((WIDTH - BUTTON_WIDTH) // 2, HEIGHT - 150, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",lambda: encrypt_message(G2_file_name.getText(), G2_massage.getText(), list_modes, G2_encription_keyID, G2_verify_keyID, 0 if G2_select_alg[0].is_selected() else 1, G2_encryption_key, G2_verify_key)))
+            if ((G2_encryption_keyID != "" and (G2_select_alg[0].is_selected() or G2_select_alg[1].is_selected())) or not G2_checkboxes[0].isChecked()) and (G2_verify_keyID!="" or not G2_checkboxes[1].isChecked()):
+                components.append(Button((WIDTH - BUTTON_WIDTH) // 2, HEIGHT - 150, BUTTON_WIDTH, BUTTON_HEIGHT, "Encrypt",lambda: encrypt_message(G2_file_name.getText(), G2_massage.getText(), list_modes, G2_encryption_keyID, G2_verify_keyID, 0 if G2_select_alg[0].is_selected() else 1, G2_encryption_key, G2_verify_key)))
 
             draw_components(LIGHT_BLUE, components)
             handle_events(components, G2_select_alg)
@@ -154,9 +170,10 @@ def main():
 
             components = [return_button, G4_user_id]
             components.append(Label("E-mail", 70, HEIGHT - 140))
-            components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, 40))
-            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2))
-            components.append(Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,"SAVE TABLE",lambda: set_screen_mod(MOD.KEY_TABLE_VIEW)))
+            components.append(Label("RSA PUBLIC KEY TABLE", (WIDTH - 300) // 2, 40))
+            components.append(Label("RSA PRIVATE KEY TABLE", (WIDTH - 300) // 2, HEIGHT // 2))
+            radio_buttons_temp = G4_radio_buttons[:len(public_key_data)]
+            components += radio_buttons_temp
 
             public_key_data_decoded = []
             for row in public_key_data:
@@ -180,11 +197,21 @@ def main():
                         table_row.append(value.decode('utf8', errors='replace'))
                 private_key_data_decoded.append(table_row)
 
-            components.append(Table((WIDTH - 1350) // 2, 80,["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "Key Size","User ID"], private_key_data_decoded))
-            components.append(Table((WIDTH - 1125) // 2, HEIGHT // 2 + 40,["Timestamp", "Key ID", "Public Key", "Key Size", "User ID"], public_key_data_decoded))
+            selected_id = -1
+            for i in range(len(radio_buttons_temp)):
+                if radio_buttons_temp[i].is_selected():
+                    selected_id = i
+
+            if selected_id != -1:
+                components.append(
+                    Button((WIDTH - BUTTON_WIDTH) // 2, (HEIGHT - 2 * BUTTON_HEIGHT), BUTTON_WIDTH, BUTTON_HEIGHT,
+                           "DELETE KEY", lambda: delete_key(selected_id)))
+
+            components.append(Table((WIDTH - 1350) // 2, HEIGHT // 2 + 40, ["Timestamp", "Key ID", "Public Key", "Encrypted Private Key", "Key Size","User ID"], private_key_data_decoded))
+            components.append(Table((WIDTH - 1125) // 2, 80, ["Timestamp", "Key ID", "Public Key", "Key Size", "User ID"], public_key_data_decoded))
 
             draw_components(WHITE, components)
-            handle_events(components)
+            handle_events(components, radio_buttons_temp)
 
         elif SCREEN_MOD == MOD.SELECT_KEY_V:
             selected_id = -1
@@ -265,11 +292,11 @@ def main():
                     selected_id = i
 
             if(selected_id != -1):
-                G2_encription_keyID = public_key_data[selected_id][1].decode('utf8')
+                G2_encryption_keyID = public_key_data[selected_id][1].decode('utf8')
                 G2_encryption_key = public_key_data[selected_id][2]
                 #print(G2_encryption_key)
             else:
-                G2_encription_keyID = ""
+                G2_encryption_keyID = ""
                 G2_encryption_key = b""
 
             components += radio_buttons_temp
@@ -336,4 +363,4 @@ k2 = b'-----BEGIN RSA PRIVATE KEY-----\nMIICXQIBAAKBgQDOMyqEZEhtD1iYopUIa1suCsGx
 
 encrypt_message(fn, m, lm, k1ID, k2ID, an, k1, k2)
 
-#main()
+main()

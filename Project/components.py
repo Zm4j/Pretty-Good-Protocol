@@ -71,7 +71,7 @@ class TextBox:
         width = self.width * 179 // 1800
         while i < len(self.text):
             text_surface = font.render(self.text[i:i+width], True, BLACK)
-            screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5 + 18*(i//width)))
+            screen.blit(text_surface, (self.rect.x + 5, self.rect.y + 5 + 17*(i//width)))
             i += width
 
     def getText(self):
@@ -125,6 +125,8 @@ class CheckBox:
     def isChecked(self):
         return self.checked
 
+    def set_value(self, value):
+        self.checked = value
 
 class Table:
     def __init__(self, x, y, column_names, data, column_width=None):

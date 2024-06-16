@@ -13,6 +13,7 @@ from additional_stuff import *
 
 import secrets
 
+
 def rsa_generate_key_pair(key_size):
     private_key = rsa.generate_private_key(
         public_exponent=65537,
@@ -170,9 +171,6 @@ def AES128_decryption(encrypted_message, key):
     return message
 
 
-
-
-
 def DES_encryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
     block = bitarray(from_hex_to_binary(block))
     key = bitarray(from_hex_to_binary(key))
@@ -231,11 +229,14 @@ def DES_decryption(block, key):  # PROSLEDJUJU SE HEX VREDNOSTI !!!!
         ciphertext_hex = append_value + str(ciphertext_hex)
     return ciphertext_hex
 
+
 def TripleDES_encr(message, s1, s2):
     return DES_encryption(DES_decryption(DES_encryption(message, s1), s2), s1)
 
+
 def TripleDES_decr(message, s1, s2):
     return DES_decryption(DES_encryption(DES_decryption(message, s1), s2), s1)
+
 
 # TODO########################################################################################
 
@@ -261,7 +262,7 @@ def generate_keys(list_k):
     enc_private_key = b'-----BEGIN RSA PRIVATE KEY-----\n' + enc_private_key + b'\n-----END RSA PRIVATE KEY-----\n'
     print(enc_private_key.decode('utf8', errors='replace'))
 
-    with open('Keys/' + list_k[0], 'wb') as f:
+    with open('Keys/' + list_k[0] + '.pem', 'wb') as f:
         f.write(enc_private_key)
         f.write(public_pem)
         f.write(("#TIME " + str(current_timestamp) + "\n").encode('utf-8'))
